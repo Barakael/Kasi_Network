@@ -1,0 +1,7 @@
+# MikroTik vendor attributes used on Access-Accept and CoA.
+VENDOR		Mikrotik			14988
+
+BEGIN-VENDOR	Mikrotik
+ATTRIBUTE	Mikrotik-Rate-Limit			8	string
+ATTRIBUTE	Mikrotik-Total-Limit			17	integer
+END-VENDOR	Mikrotik
