@@ -1,0 +1,133 @@
+name: kasi-network
+
+# Development stack for the Kasi Network hotspot platform.
+#
+# FreeRADIUS shares the MySQL database with the Laravel API so that the
+# sqlcounter modules can join the voucher_usage rollup table directly.
+# It connects as the restricted `radius` user created in mysql/init/.
+#
+#   docker compose -f docker/compose.yaml up -d
+#
+# RADIUS ports are published on the host so a physical MikroTik on the LAN can
+# point at this machine as its NAS target during development.
+
+services:
+  mysql:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # radacct sees a write per interim update; a larger buffer pool and
+      # relaxed flush keep 1000+ concurrent sessions from stalling on fsync.
+      - --innodb-buffer-pool-size=1G
+      - --innodb-flush-log-at-trx-commit=2
+      - --max-connections=500
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kasi}
+      # Password for the restricted account FreeRADIUS authenticates with.
+      KASI_RADIUS_DB_PASSWORD: ${KASI_RADIUS_DB_PASSWORD:-radius_secret}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  freeradius:
+    build:
+      context: ./freeradius
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      RADIUS_DB_HOST: mysql
+      RADIUS_DB_PORT: "3306"
+      RADIUS_DB_NAME: ${MYSQL_DATABASE:-kasi}
+      RADIUS_DB_USER: radius
+      RADIUS_DB_PASSWORD: ${KASI_RADIUS_DB_PASSWORD:-radius_secret}
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    volumes:
+      - ./freeradius/config:/opt/kasi-raddb:ro
+    # `-X` gives single-threaded debug output. Drop it (and let the image use its
+    # tuned thread pool) when testing throughput; see docs/deployment-runbook.md.
+    command: ["radiusd", "-f", "-l", "stdout"]
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE:-kasi}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      REDIS_HOST: redis
+      REDIS_CLIENT: predis
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ../api:/app
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+
+  queue:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      - api
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE:-kasi}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      REDIS_HOST: redis
+      REDIS_CLIENT: predis
+    volumes:
+      - ../api:/app
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      - api
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE:-kasi}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      REDIS_HOST: redis
+      REDIS_CLIENT: predis
+    volumes:
+      - ../api:/app
+    command: ["php", "artisan", "schedule:work"]
+
+volumes:
+  mysql-data:
+  redis-data:
