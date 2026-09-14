@@ -1,0 +1,100 @@
+# -*- text -*-
+#
+# The only enabled site. Default and inner-tunnel are removed in the image so
+# a request cannot fall through to a policy that skips tenant and MAC checks.
+
+server kasi {
+	listen {
+		type = auth
+		ipaddr = *
+		port = 0
+	}
+
+	listen {
+		type = acct
+		ipaddr = *
+		port = 0
+	}
+
+	authorize {
+		# MAC-as-username (RouterOS radius-mac-authentication) is rewritten
+		# to the parent voucher so quota and radacct stay on one identity.
+		rewrite_mac_username
+
+		filter_username
+		preprocess
+		chap
+		mschap
+
+		# Reject a voucher presented on another operator's router. Codes
+		# are globally unique but still must not work across tenants if a
+		# code is leaked; NAS-Identifier is the site's nas_identifier.
+		if ("%{sql:SELECT 1 FROM voucher_usage vu INNER JOIN nas_devices nd ON nd.tenant_id = vu.tenant_id INNER JOIN sites s ON s.id = nd.site_id WHERE vu.username = '%{User-Name}' AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL AND (s.nas_identifier = '%{NAS-Identifier}' OR '%{NAS-Identifier}' = '') LIMIT 1}" != "1") {
+			update reply {
+				Reply-Message := "Voucher not valid on this network"
+			}
+			reject
+		}
+
+		sql
+		expiration
+		logintime
+		kasi_time
+		kasi_data
+
+		pap
+	}
+
+	authenticate {
+		Auth-Type PAP {
+			pap
+		}
+		Auth-Type CHAP {
+			chap
+		}
+		Auth-Type MS-CHAP {
+			mschap
+		}
+	}
+
+	preacct {
+		rewrite_mac_username
+		preprocess
+		acct_unique
+		suffix
+	}
+
+	accounting {
+		sql
+	}
+
+	session {
+		sql
+	}
+
+	post-auth {
+		# First-use clock. sql xlat runs the statement for side effect;
+		# the selected 1 is discarded.
+		if (ok) {
+			update control {
+				Tmp-String-0 := "%{sql:UPDATE vouchers v INNER JOIN voucher_usage vu ON vu.voucher_id = v.id SET v.first_used_at = UTC_TIMESTAMP(), v.expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL v.validity_seconds SECOND), v.status = 'active' WHERE vu.username = '%{User-Name}' AND v.first_used_at IS NULL AND v.status IN ('unused','active')}"
+			}
+			update control {
+				Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) SELECT vu.username, 'Expiration', ':=', DATE_FORMAT(v.expires_at, '%%b %%e %%Y %%H:%%i:%%S') FROM voucher_usage vu INNER JOIN vouchers v ON v.id = vu.voucher_id WHERE vu.username = '%{User-Name}' AND v.expires_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM radcheck c WHERE c.username = vu.username AND c.attribute = 'Expiration')}"
+			}
+			update control {
+				Tmp-String-0 := "%{sql:UPDATE vouchers v INNER JOIN voucher_usage vu ON vu.voucher_id = v.id SET v.bound_mac = '%{Calling-Station-Id}' WHERE vu.username = '%{User-Name}' AND v.bound_mac IS NULL AND v.device_limit = 1 AND '%{Calling-Station-Id}' != ''}"
+			}
+			update control {
+				Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) SELECT vu.username, 'Calling-Station-Id', '==', v.bound_mac FROM voucher_usage vu INNER JOIN vouchers v ON v.id = vu.voucher_id WHERE vu.username = '%{User-Name}' AND v.bound_mac IS NOT NULL AND NOT EXISTS (SELECT 1 FROM radcheck c WHERE c.username = vu.username AND c.attribute = 'Calling-Station-Id')}"
+			}
+		}
+
+		sql
+
+		Post-Auth-Type REJECT {
+			sql
+			attr_filter.access_reject
+		}
+	}
+}

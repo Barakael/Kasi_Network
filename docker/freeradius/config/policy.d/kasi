@@ -1,0 +1,30 @@
+# -*- text -*-
+#
+# Rewrites a MAC username (RouterOS radius-mac-authentication) onto the parent
+# voucher code so accounting and sqlcounter share one quota. Scoped by the NAS
+# the request arrived on, so the same physical device on two operators' networks
+# does not collide.
+
+policy rewrite_mac_username {
+	if (User-Name =~ /^([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})$/) {
+		update request {
+			&Tmp-String-0 := "%{tolower:%{1}:%{2}:%{3}:%{4}:%{5}:%{6}}"
+		}
+		update request {
+			&Tmp-String-0 := "%{toupper:%{Tmp-String-0}}"
+		}
+
+		if ("%{sql:SELECT vu.username FROM voucher_devices vd INNER JOIN voucher_usage vu ON vu.voucher_id = vd.voucher_id INNER JOIN nas_devices nd ON nd.tenant_id = vd.tenant_id WHERE vd.mac = '%{Tmp-String-0}' AND vd.status = 'active' AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL LIMIT 1}" != "") {
+			update request {
+				&Stripped-User-Name := "%{User-Name}"
+				&User-Name := "%{sql:SELECT vu.username FROM voucher_devices vd INNER JOIN voucher_usage vu ON vu.voucher_id = vd.voucher_id INNER JOIN nas_devices nd ON nd.tenant_id = vd.tenant_id WHERE vd.mac = '%{Tmp-String-0}' AND vd.status = 'active' AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL LIMIT 1}"
+			}
+		}
+		else {
+			update reply {
+				Reply-Message := "Device is not bound to a voucher"
+			}
+			reject
+		}
+	}
+}
