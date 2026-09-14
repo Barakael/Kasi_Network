@@ -1,0 +1,35 @@
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# PHP
+vendor/
+api/storage/*.key
+api/storage/framework/cache/*
+api/storage/framework/sessions/*
+api/storage/framework/views/*
+api/storage/logs/*
+api/bootstrap/cache/*
+api/public/build/
+api/public/hot
+api/database/*.sqlite
+api/.phpunit.result.cache
+api/.phpunit.cache/
+
+# Generated voucher print artefacts
+api/storage/app/vouchers/
+
+# Load-test output
+docs/load-test-results/*.json
+
+# Editors
+.idea/
+.vscode/
+*.swp
