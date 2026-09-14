@@ -1,0 +1,42 @@
+# -*- text -*-
+#
+# Kasi SQL module. Placeholders are filled by docker-entrypoint.sh because
+# FreeRADIUS does not expand environment variables here.
+
+sql {
+	dialect = "mysql"
+	driver = "rlm_sql_${dialect}"
+
+	server = "__RADIUS_DB_HOST__"
+	port = __RADIUS_DB_PORT__
+	login = "__RADIUS_DB_USER__"
+	password = "__RADIUS_DB_PASSWORD__"
+	radius_db = "__RADIUS_DB_NAME__"
+
+	# Clients come from the `nas` table, which Laravel keeps in sync when
+	# an operator adds a router. Without this, every new NAS would need a
+	# radiusd restart and an edit of clients.conf.
+	read_clients = yes
+	client_table = "nas"
+
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+	postauth_table = "radpostauth"
+
+	# sqlcounter and the tenant-scope checks hit this pool on every
+	# Access-Request. 64 connections is sized for 1000 concurrent sessions
+	# with a handful of queries each, without exhausting MySQL's 500 cap
+	# once the API pool is counted too.
+	pool {
+		start = 8
+		min = 8
+		max = 64
+		spare = 8
+		uses = 0
+		lifetime = 0
+		idle_timeout = 60
+		retry_delay = 1
+	}
+
+	$INCLUDE ${modconfdir}/sql/main/${dialect}/queries.conf
+}

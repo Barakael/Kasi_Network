@@ -1,0 +1,11 @@
+thread pool {
+	# Default is start_servers 5, which saturates well before 1000 concurrent
+	# sessions once each auth runs several SQL queries.
+	start_servers = 32
+	max_servers = 256
+	min_spare_servers = 8
+	max_spare_servers = 32
+	max_requests_per_server = 0
+	cleanup_delay = 5
+	max_queue_size = 65536
+}
