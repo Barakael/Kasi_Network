@@ -1,0 +1,47 @@
+# -*- text -*-
+#
+# Remaining time and remaining bytes, read from the voucher_usage rollup plus
+# currently-open radacct rows. Never a full-table SUM of history: that is the
+# query that collapses naive hotspot billing under a few hundred users.
+
+sqlcounter kasi_time {
+	sql_module_instance = sql
+	dialect = mysql
+
+	counter_name = Kasi-Seconds-Used
+	check_name = Max-All-Session
+	reply_name = Session-Timeout
+	key = User-Name
+	reset = never
+
+	query = "\
+		SELECT IFNULL(vu.seconds_used, 0) + IFNULL(( \
+			SELECT SUM(IFNULL(acctsessiontime, TIMESTAMPDIFF(SECOND, acctstarttime, UTC_TIMESTAMP()))) \
+			FROM radacct \
+			WHERE username = '%{User-Name}' \
+			  AND acctstoptime IS NULL \
+		), 0) \
+		FROM voucher_usage vu \
+		WHERE vu.username = '%{User-Name}'"
+}
+
+sqlcounter kasi_data {
+	sql_module_instance = sql
+	dialect = mysql
+
+	counter_name = Kasi-Bytes-Used
+	check_name = Max-Data
+	reply_name = Mikrotik-Total-Limit
+	key = User-Name
+	reset = never
+
+	query = "\
+		SELECT IFNULL(vu.bytes_in + vu.bytes_out, 0) + IFNULL(( \
+			SELECT SUM(IFNULL(acctinputoctets, 0) + IFNULL(acctoutputoctets, 0)) \
+			FROM radacct \
+			WHERE username = '%{User-Name}' \
+			  AND acctstoptime IS NULL \
+		), 0) \
+		FROM voucher_usage vu \
+		WHERE vu.username = '%{User-Name}'"
+}
