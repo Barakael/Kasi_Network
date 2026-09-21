@@ -1,26 +1,166 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-brand-50: oklch(0.97 0.02 250);
-  --color-brand-400: oklch(0.72 0.14 250);
-  --color-brand-500: oklch(0.62 0.17 250);
-  --color-brand-600: oklch(0.53 0.18 252);
-  --color-brand-700: oklch(0.45 0.16 254);
-  --color-ink-900: oklch(0.22 0.03 258);
-  --color-ink-800: oklch(0.28 0.03 258);
+  --color-leaf-50: #f3faf4;
+  --color-leaf-100: #e4f3e7;
+  --color-leaf-200: #c8e6cf;
+  --color-leaf-300: #9dcea8;
+  --color-leaf-500: #4f9a63;
+  --color-leaf-600: #3a7a4c;
+  --color-leaf-700: #2f5f3d;
+  --color-leaf-900: #1c3326;
+  --color-mist: #f7fbf8;
+  --color-brand-50: #e4f3e7;
+  --color-brand-400: #6fb07f;
+  --color-brand-500: #4f9a63;
+  --color-brand-600: #3a7a4c;
+  --color-brand-700: #2f5f3d;
+  --color-ink-900: #1c3326;
+  --color-ink-800: #2a4534;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --font-body: 'Avenir Next', 'Segoe UI', 'Helvetica Neue', sans-serif;
 }
 
 html {
-  /* Prevent iOS zooming the layout when a voucher input gains focus. */
   -webkit-text-size-adjust: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  height: 100%;
+  overflow: hidden;
+  color: var(--color-leaf-900);
+  font-family: var(--font-body);
+  background: var(--color-mist);
+}
+
+#root {
+  height: 100%;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes leaf-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 20px rgb(58 122 76 / 0.2);
+  }
+  50% {
+    box-shadow: 0 10px 26px rgb(58 122 76 / 0.3);
+  }
+}
+
+.portal-shell {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding:
+    max(0.75rem, env(safe-area-inset-top))
+    1rem
+    max(0.6rem, env(safe-area-inset-bottom))
+    1rem;
+}
+
+.portal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  animation: soft-fade 1s ease both;
+}
+
+.portal-bg picture,
+.portal-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 55%;
+  filter: saturate(0.88) brightness(1.05);
+}
+
+.portal-wash {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(243 250 244 / 0.5) 0%,
+      rgb(247 251 248 / 0.55) 18%,
+      rgb(247 251 248 / 0.88) 42%,
+      #f7fbf8 68%
+    ),
+    radial-gradient(ellipse 90% 40% at 50% 0%, rgb(157 206 168 / 0.28), transparent 70%);
+}
+
+.portal-content {
+  display: flex;
+  width: 100%;
+  max-width: 26rem;
+  margin-inline: auto;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.65rem;
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.portal-brand {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.portal-cta {
+  animation: leaf-glow 3.6s ease-in-out infinite;
+}
+
+.portal-field {
+  min-height: 2.65rem;
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--color-leaf-300) 80%, transparent);
+  background: rgb(255 255 255 / 0.88);
+  padding-inline: 0.75rem;
+  outline: none;
+}
+
+.portal-field:focus {
+  border-color: var(--color-leaf-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-leaf-200) 90%, transparent);
+}
+
+.portal-btn {
+  min-height: 2.65rem;
+  border-radius: 0.9rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-bg,
+  .portal-content,
+  .portal-cta {
+    animation: none;
+  }
 }
