@@ -222,7 +222,7 @@
 
                 <div>
                     <div class="card__instructions">
-                        Connect to Wi-Fi, then scan or enter the code
+                        Scan the QR on the hotspot portal to connect. Code is the fallback.
                     </div>
                     @if ($card->expiryNote)
                         <div class="card__footer">{{ $card->expiryNote }}</div>
