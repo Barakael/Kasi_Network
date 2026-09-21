@@ -39,6 +39,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $first_used_at
  * @property Carbon|null $expires_at
  * @property Carbon|null $shelf_expires_at
+ * @property Carbon|null $printed_at
  */
 #[Hidden(['code', 'code_hash'])]
 class Voucher extends Model
@@ -87,6 +88,7 @@ class Voucher extends Model
             'first_used_at' => 'datetime',
             'expires_at' => 'datetime',
             'shelf_expires_at' => 'datetime',
+            'printed_at' => 'datetime',
             'disabled_at' => 'datetime',
         ];
     }
