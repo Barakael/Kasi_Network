@@ -15,7 +15,25 @@ export type Plan = {
   data_cap_bytes: number | null;
   price_minor: number;
   rate_limit_down_kbps: number | null;
+  rate_limit_up_kbps?: number | null;
   device_limit: number;
+  on_quota_exhausted?: string;
+  throttle_down_kbps?: number | null;
+};
+
+export type RedeemSession = {
+  plan: string | null;
+  validity_seconds: number;
+  duration_seconds: number | null;
+  data_cap_bytes: number | null;
+  device_limit: number;
+  expires_at: string | null;
+};
+
+export type RedeemResult = {
+  code: string;
+  display_code: string;
+  session?: RedeemSession;
 };
 
 export type Bootstrap = {
@@ -75,7 +93,7 @@ export const portalApi = {
       method: 'POST',
       headers: authHeaders(token),
       body: JSON.stringify({ code }),
-    }).then((res) => parse<{ code: string; display_code: string }>(res)),
+    }).then((res) => parse<RedeemResult>(res)),
 
   createOrder: (token: string, planId: number, phone: string) =>
     fetch('/api/portal/orders', {
@@ -114,4 +132,22 @@ export function formatBytes(bytes: number | null): string | null {
     return `${Number((bytes / 1_000_000_000).toFixed(2)).toString()} GB`;
   }
   return `${Math.round(bytes / 1_000_000)} MB`;
+}
+
+export function formatDuration(seconds: number | null): string | null {
+  if (seconds === null || seconds <= 0) {
+    return null;
+  }
+  if (seconds % 86400 === 0) {
+    const days = seconds / 86400;
+    return days === 1 ? '1 day' : `${days} days`;
+  }
+  if (seconds % 3600 === 0) {
+    const hours = seconds / 3600;
+    return hours === 1 ? '1 hour' : `${hours} hours`;
+  }
+  if (seconds >= 3600) {
+    return `${Math.round(seconds / 3600)} hours`;
+  }
+  return `${Math.max(1, Math.round(seconds / 60))} min`;
 }

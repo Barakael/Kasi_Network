@@ -41,6 +41,8 @@ class DatabaseSeeder extends Seeder
         $this->seedUsers($tenant);
         $site = $this->seedSite($tenant);
         $this->seedRouter($tenant, $site);
+
+        app(\App\Domain\Tenancy\CurrentTenant::class)->set($tenant);
         $this->seedPlans($tenant);
 
         $this->command?->info("Seeded tenant '{$tenant->name}' (prefix {$tenant->code_prefix}).");
@@ -106,7 +108,7 @@ class DatabaseSeeder extends Seeder
             [
                 'tenant_id' => $tenant->id,
                 'site_id' => $site->id,
-                'name' => 'hAP ax2 - Kariakoo',
+                'name' => 'hAP lite - Kariakoo',
                 'shared_secret' => Str::random(32),
                 'api_host' => '192.168.88.1',
                 'api_port' => 8728,
@@ -205,13 +207,14 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($plans as $attributes) {
-            Plan::firstOrCreate(
+            Plan::withTrashed()->updateOrCreate(
                 ['tenant_id' => $tenant->id, 'name' => $attributes['name']],
                 [
                     ...$attributes,
                     'shelf_life_days' => 365,
                     'is_active' => true,
                     'is_sold_online' => true,
+                    'deleted_at' => null,
                 ],
             );
         }

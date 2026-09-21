@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kasi WiFi login</title>
+  <meta http-equiv="refresh" content="0;url=http://192.168.88.10:5173/?site=kasi-demo-site-1&mac=$(mac)&ip=$(ip)&link_login=$(link-login-only)&link_orig=$(link-orig)&chap_id=$(chap-id)&chap_challenge=$(chap-challenge)">
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 24px; text-align: center; }
+    a { display: inline-block; margin-top: 16px; padding: 16px 24px; background: #2563eb; color: #fff; font-weight: 700; text-decoration: none; border-radius: 12px; min-width: 220px; }
+  </style>
+</head>
+<body>
+  <p>Continue to Kasi WiFi to pick a bundle or enter a voucher.</p>
+  <p>
+    <a id="go" href="http://192.168.88.10:5173/?site=kasi-demo-site-1&mac=$(mac)&ip=$(ip)&link_login=$(link-login-only)&link_orig=$(link-orig)&chap_id=$(chap-id)&chap_challenge=$(chap-challenge)">Open login</a>
+  </p>
+  <script>
+    setTimeout(function () { window.location.replace(document.getElementById("go").href); }, 300);
+  </script>
+</body>
+</html>
