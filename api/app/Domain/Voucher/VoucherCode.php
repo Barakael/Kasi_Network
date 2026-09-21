@@ -35,13 +35,26 @@ final class VoucherCode
     public const string ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXY';
 
     /**
-     * Builds a code for a tenant: prefix, random body, then a check character.
+     * Builds a strong random code: random body, then a check character.
      *
-     * @param  string  $prefix  Tenant code prefix, already validated.
-     * @param  int  $bodyLength  Random characters between prefix and check character.
+     * Codes are not prefixed with a shared tenant tag. Every card must look
+     * different; tenant ownership is enforced by tenant_id + HMAC lookup, not by
+     * a visible prefix that would make every voucher start the same way.
+     *
+     * @param  int  $bodyLength  Random characters before the check character.
+     *                           Default 9 → printed code length 10.
+     * @param  string  $prefix  Optional legacy prefix; leave empty for new issues.
      */
-    public static function generate(string $prefix, int $bodyLength): string
+    public static function generate(int $bodyLength = 9, string $prefix = ''): string
     {
+        if ($bodyLength < 1) {
+            throw new InvalidArgumentException('Body length must be at least 1.');
+        }
+
+        if ($prefix !== '' && ! self::isValidPrefix($prefix)) {
+            throw new InvalidArgumentException("Invalid voucher prefix: {$prefix}");
+        }
+
         $alphabet = self::ALPHABET;
         $max = strlen($alphabet) - 1;
         $body = '';
