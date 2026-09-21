@@ -219,6 +219,13 @@ export function App() {
         </>
       }
     >
+      <div className="portal-sheet-head">
+        <p className="text-xs font-semibold tracking-[0.18em] uppercase text-leaf-600">Karibu</p>
+        <p className="portal-brand mt-1 text-[1.65rem] leading-none text-leaf-900">
+          {boot.branding.operator || 'Kasi-Net'}
+        </p>
+      </div>
+
       {(error || status) && (
         <p
           className={`rounded-xl px-3 py-2 text-center text-sm ${
@@ -364,7 +371,7 @@ export function App() {
         </form>
       </section>
 
-      <p className="mt-auto text-center text-xs tracking-wide text-leaf-600/80">Powered by Kasi-Net</p>
+      <p className="portal-foot mt-auto text-center text-xs tracking-wide text-leaf-600/80">Powered by Kasi-Net</p>
     </Shell>
       <QrScanner
         open={scanTarget !== null}
@@ -388,8 +395,8 @@ function Shell({ children, hero }: { children: ReactNode; hero: ReactNode }) {
     <main className="portal-shell">
       <div className="portal-hero">
         <picture>
-          <source srcSet="/people-hero.webp" type="image/webp" />
-          <img src="/people-hero.jpg" alt="" decoding="async" />
+          <source srcSet="/bg-hero.webp" type="image/webp" />
+          <img src="/Bg.png" alt="" decoding="async" />
         </picture>
         <div className="portal-hero-shade" aria-hidden />
         <div className="portal-hero-copy">{hero}</div>
