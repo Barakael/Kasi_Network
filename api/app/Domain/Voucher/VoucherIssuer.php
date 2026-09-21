@@ -114,7 +114,6 @@ final readonly class VoucherIssuer
      */
     private function insertChunk(Plan $plan, int $size, ?VoucherBatch $batch): Collection
     {
-        $tenant = $plan->tenant;
         $bodyLength = (int) config('kasi.voucher.body_length');
         $suffixLength = (int) config('kasi.voucher.group_size');
         $now = Carbon::now();
@@ -124,7 +123,9 @@ final readonly class VoucherIssuer
             : $now->copy()->addDays($plan->shelf_life_days);
 
         $terms = $plan->termsSnapshot();
-        $codes = $this->uniqueCodes($tenant->code_prefix, $bodyLength, $size);
+        // No shared prefix on the card: every code is a fresh random string.
+        // Tenant ownership is tenant_id + global code_hash uniqueness.
+        $codes = $this->uniqueCodes($bodyLength, $size);
         $rows = [];
 
         foreach ($codes as $code) {
@@ -227,12 +228,12 @@ final readonly class VoucherIssuer
      *
      * @return array<int, string>
      */
-    private function uniqueCodes(string $prefix, int $bodyLength, int $size): array
+    private function uniqueCodes(int $bodyLength, int $size): array
     {
         $codes = [];
 
         while (count($codes) < $size) {
-            $code = VoucherCode::generate($prefix, $bodyLength);
+            $code = VoucherCode::generate($bodyLength);
             $codes[$code] = true;
         }
 
