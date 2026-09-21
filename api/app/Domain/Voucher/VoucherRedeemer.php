@@ -66,7 +66,34 @@ final readonly class VoucherRedeemer
             }
         }
 
+        $this->activateOnFirstUse($voucher);
+
         return $voucher->fresh('plan');
+    }
+
+    /**
+     * Starts the validity window the moment the customer actually uses the code.
+     *
+     * Issuance only provisions RADIUS credentials; the clock and status flip
+     * here (or in FreeRADIUS post-auth if the router authenticates first).
+     * Quotas (online time / data) still deplete only through accounting.
+     */
+    private function activateOnFirstUse(Voucher $voucher): void
+    {
+        if ($voucher->first_used_at !== null) {
+            return;
+        }
+
+        $now = now();
+        $expiresAt = $now->copy()->addSeconds($voucher->validity_seconds);
+
+        $voucher->update([
+            'first_used_at' => $now,
+            'expires_at' => $expiresAt,
+            'status' => VoucherStatus::Active,
+        ]);
+
+        $this->provisioner->stampExpiration($voucher->fresh());
     }
 
     private function throttle(PortalContext $context): void
