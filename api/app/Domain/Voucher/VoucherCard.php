@@ -50,11 +50,10 @@ final readonly class VoucherCard
     /**
      * The link the QR code carries.
      *
-     * Deep-links into the portal with the code already filled in, so a customer
-     * who can scan never types it. The printed characters remain the fallback for
-     * anyone who cannot, which on a hotspot network is a real fraction of users:
-     * scanning requires a camera app that is not itself blocked by the walled
-     * garden.
+     * Deep-links into the portal with the code in the path. The portal auto-redeems
+     * on load when the hotspot session (site + optional CHAP params) is present,
+     * so a customer who can scan never types. The printed characters remain the
+     * fallback when the camera is blocked by the walled garden.
      */
     public static function redemptionUrl(string $code, ?Site $site = null): string
     {
@@ -135,11 +134,11 @@ final readonly class VoucherCard
             $notes[] = 'Use by '.$voucher->shelf_expires_at->format('j M Y');
         }
 
-        if ($voucher->duration_seconds !== null && $voucher->validity_seconds > $voucher->duration_seconds) {
-            $notes[] = 'Valid '.self::humanDuration($voucher->validity_seconds).' from first use';
-        }
+        // Always tell the customer the clock starts when they connect, not when
+        // the card was printed.
+        $notes[] = 'Starts on first use · '.self::humanDuration($voucher->validity_seconds).' window';
 
-        return $notes === [] ? null : implode(' · ', $notes);
+        return implode(' · ', $notes);
     }
 
     private static function humanDuration(int $seconds): string
