@@ -110,7 +110,7 @@ class VoucherPrintTest extends TestCase
     }
 
     #[Test]
-    public function a_range_can_be_reprinted_after_a_printer_jam(): void
+    public function a_range_of_unprinted_codes_can_be_printed_after_a_jam_on_later_sheets(): void
     {
         config()->set('kasi.voucher.print_columns', 2);
         config()->set('kasi.voucher.print_rows', 3);
@@ -118,14 +118,60 @@ class VoucherPrintTest extends TestCase
         $batch = $this->readyBatch(20);
         $codes = $batch->vouchers()->orderBy('id')->get();
 
+        // First sheet (codes 1–6) is printed and locked.
+        $this->actingAs($this->owner)
+            ->get("/api/print/voucher-batches/{$batch->id}")
+            ->assertOk();
+
+        // A later range that was never printed can still be run off.
         $response = $this->actingAs($this->owner)
-            ->get("/api/print/voucher-batches/{$batch->id}?from=7&to=9")
+            ->get("/api/print/voucher-batches/{$batch->id}?from=1&to=3")
             ->assertOk();
 
         $response->assertSee($codes[6]->displayCode())
             ->assertSee($codes[8]->displayCode())
-            ->assertDontSee($codes[0]->displayCode())
-            ->assertDontSee($codes[9]->displayCode());
+            ->assertDontSee($codes[0]->displayCode());
+    }
+
+    #[Test]
+    public function the_same_codes_cannot_be_printed_twice(): void
+    {
+        config()->set('kasi.voucher.print_columns', 2);
+        config()->set('kasi.voucher.print_rows', 3);
+
+        $batch = $this->readyBatch(4);
+
+        $this->actingAs($this->owner)
+            ->get("/api/print/voucher-batches/{$batch->id}")
+            ->assertOk();
+
+        $this->actingAs($this->owner)
+            ->getJson("/api/print/voucher-batches/{$batch->id}")
+            ->assertJsonValidationErrors('batch');
+
+        $this->assertSame(4, $batch->vouchers()->whereNotNull('printed_at')->count());
+    }
+
+    #[Test]
+    public function printing_is_counted_and_audited_once_per_sheet(): void
+    {
+        config()->set('kasi.voucher.print_columns', 2);
+        config()->set('kasi.voucher.print_rows', 2);
+
+        $batch = $this->readyBatch(6);
+
+        $this->actingAs($this->owner)->get("/api/print/voucher-batches/{$batch->id}")->assertOk();
+        $this->actingAs($this->owner)->get("/api/print/voucher-batches/{$batch->id}")->assertOk();
+
+        $this->assertSame(2, $batch->fresh()->print_count);
+        $this->assertNotNull($batch->fresh()->printed_at);
+        $this->assertSame(6, $batch->vouchers()->whereNotNull('printed_at')->count());
+
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->owner->id,
+            'action' => 'voucher_batch.printed',
+        ]);
     }
 
     #[Test]
@@ -223,29 +269,6 @@ class VoucherPrintTest extends TestCase
         $this->actingAs($this->owner)
             ->getJson("/api/print/voucher-batches/{$foreignBatch->id}")
             ->assertNotFound();
-    }
-
-    #[Test]
-    public function printing_is_counted_and_audited(): void
-    {
-        $batch = $this->readyBatch(2);
-
-        $this->actingAs($this->owner)->get("/api/print/voucher-batches/{$batch->id}")->assertOk();
-        $this->actingAs($this->owner)->get("/api/print/voucher-batches/{$batch->id}")->assertOk();
-
-        /*
-         * A count rather than a flag, because two sets of the same cards in
-         * circulation is how a voucher gets sold twice, and the only way an
-         * operator notices is seeing that the batch was run off more than once.
-         */
-        $this->assertSame(2, $batch->fresh()->print_count);
-        $this->assertNotNull($batch->fresh()->printed_at);
-
-        $this->assertDatabaseHas('audit_logs', [
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->owner->id,
-            'action' => 'voucher_batch.printed',
-        ]);
     }
 
     #[Test]
