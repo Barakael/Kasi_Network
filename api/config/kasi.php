@@ -41,8 +41,13 @@ return [
          */
         'hash_key' => env('KASI_VOUCHER_HASH_KEY') ?: env('APP_KEY', ''),
 
-        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 10),
-        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 4),
+        /*
+         * Random body length before the check character. Default 9 → a 10-character
+         * printed code (body + check). No shared tenant prefix is embedded in the
+         * code; operators are distinguished by tenant_id and the HMAC lookup.
+         */
+        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 9),
+        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 5),
         // Bulk generation insert chunk. Large enough to keep a 10k batch fast,
         // small enough to stay well inside max_allowed_packet.
         'insert_chunk' => (int) env('KASI_VOUCHER_INSERT_CHUNK', 1000),
