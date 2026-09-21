@@ -35,10 +35,20 @@ class PortalRedeemTest extends TestCase
             ->assertOk()
             ->assertJsonPath('code', $voucher->code);
 
+        $voucher->refresh();
+        $this->assertNotNull($voucher->first_used_at);
+        $this->assertNotNull($voucher->expires_at);
+        $this->assertSame('active', $voucher->status->value);
+
         $this->assertDatabaseHas('radcheck', [
             'username' => $voucher->code,
             'attribute' => RadiusAttribute::CALLING_STATION_ID,
             'value' => 'AA:BB:CC:DD:EE:FF',
+        ]);
+
+        $this->assertDatabaseHas('radcheck', [
+            'username' => $voucher->code,
+            'attribute' => RadiusAttribute::EXPIRATION,
         ]);
     }
 
