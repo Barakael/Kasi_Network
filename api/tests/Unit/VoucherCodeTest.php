@@ -11,24 +11,17 @@ use PHPUnit\Framework\TestCase;
 
 class VoucherCodeTest extends TestCase
 {
-    public function test_generated_code_starts_with_the_tenant_prefix(): void
+    public function test_generated_code_is_body_plus_check_character(): void
     {
-        $code = VoucherCode::generate('KAS', 10);
+        $code = VoucherCode::generate(9);
 
-        $this->assertStringStartsWith('KAS', $code);
-    }
-
-    public function test_generated_code_is_prefix_plus_body_plus_check_character(): void
-    {
-        $code = VoucherCode::generate('KAS', 10);
-
-        $this->assertSame(14, strlen($code));
+        $this->assertSame(10, strlen($code));
     }
 
     public function test_generated_codes_pass_their_own_check_character(): void
     {
         for ($i = 0; $i < 200; $i++) {
-            $code = VoucherCode::generate('KAS', 10);
+            $code = VoucherCode::generate(9);
 
             $this->assertTrue(
                 VoucherCode::hasValidCheckCharacter($code),
@@ -40,7 +33,7 @@ class VoucherCodeTest extends TestCase
     public function test_generated_codes_only_use_the_crockford_alphabet(): void
     {
         for ($i = 0; $i < 50; $i++) {
-            $code = VoucherCode::generate('KAS', 10);
+            $code = VoucherCode::generate(9);
 
             $this->assertMatchesRegularExpression(
                 '/^['.VoucherCode::ALPHABET.']+$/',
@@ -55,10 +48,23 @@ class VoucherCodeTest extends TestCase
         $codes = [];
 
         for ($i = 0; $i < 500; $i++) {
-            $codes[] = VoucherCode::generate('KAS', 10);
+            $codes[] = VoucherCode::generate(9);
         }
 
         $this->assertCount(500, array_unique($codes));
+    }
+
+    public function test_generated_codes_do_not_share_a_fixed_prefix(): void
+    {
+        $codes = [];
+
+        for ($i = 0; $i < 40; $i++) {
+            $codes[] = VoucherCode::generate(9);
+        }
+
+        $prefixes = array_unique(array_map(fn (string $c): string => substr($c, 0, 3), $codes));
+
+        $this->assertGreaterThan(1, count($prefixes), 'Codes must not all start with the same three characters.');
     }
 
     #[DataProvider('equivalentCodes')]
@@ -75,24 +81,19 @@ class VoucherCodeTest extends TestCase
     public static function equivalentCodes(): array
     {
         return [
-            'lowercase' => ['kas7f3k9m2q', 'KAS7F3K9M2Q'],
-            'dashes' => ['KAS-7F3K-9M2Q', 'KAS7F3K9M2Q'],
-            'spaces' => ['KAS 7F3K 9M2Q', 'KAS7F3K9M2Q'],
-            'surrounding whitespace' => ['  KAS7F3K9M2Q  ', 'KAS7F3K9M2Q'],
-            'letter O typed for zero' => ['KASO', 'KAS0'],
-            'letter I typed for one' => ['KASI', 'KAS1'],
-            'letter L typed for one' => ['KASL', 'KAS1'],
+            'lowercase' => ['7f3k9m2qv5', '7F3K9M2QV5'],
+            'dashes' => ['7F3K9-M2QV5', '7F3K9M2QV5'],
+            'spaces' => ['7F3K9 M2QV5', '7F3K9M2QV5'],
+            'surrounding whitespace' => ['  7F3K9M2QV5  ', '7F3K9M2QV5'],
+            'letter O typed for zero' => ['OABC', '0ABC'],
+            'letter I typed for one' => ['IABC', '1ABC'],
+            'letter L typed for one' => ['LABC', '1ABC'],
         ];
     }
 
-    /**
-     * Exhaustive rather than sampled: every position substituted for every other
-     * character in the alphabet. A weaker checksum passes a spot check and then
-     * lets real typos through, so the guarantee is verified in full.
-     */
     public function test_every_single_character_substitution_fails_the_check_character(): void
     {
-        $code = VoucherCode::generate('KAS', 10);
+        $code = VoucherCode::generate(9);
         $checked = 0;
 
         for ($position = 0; $position < strlen($code); $position++) {
@@ -114,17 +115,13 @@ class VoucherCodeTest extends TestCase
         $this->assertSame(strlen($code) * (strlen(VoucherCode::ALPHABET) - 1), $checked);
     }
 
-    /**
-     * Every adjacent pair, across many codes so the value pairs involved vary.
-     */
     public function test_every_adjacent_transposition_fails_the_check_character(): void
     {
         for ($attempt = 0; $attempt < 100; $attempt++) {
-            $code = VoucherCode::generate('KAS', 10);
+            $code = VoucherCode::generate(9);
 
             for ($position = 0; $position < strlen($code) - 1; $position++) {
                 if ($code[$position] === $code[$position + 1]) {
-                    // Swapping identical characters produces the same code.
                     continue;
                 }
 
@@ -141,11 +138,6 @@ class VoucherCodeTest extends TestCase
 
     public function test_the_alphabet_size_is_prime(): void
     {
-        /*
-         * The substitution and transposition guarantees both depend on it. If
-         * someone adds a symbol back to the alphabet, this fails rather than
-         * quietly degrading the checksum.
-         */
         $size = strlen(VoucherCode::ALPHABET);
 
         $this->assertSame(31, $size);
@@ -175,20 +167,18 @@ class VoucherCodeTest extends TestCase
 
     public function test_display_form_groups_characters_for_printing(): void
     {
-        $this->assertSame('KAS7-F3K9-M2QV-W5', VoucherCode::forDisplay('KAS7F3K9M2QVW5', 4));
+        $this->assertSame('7F3K9-M2QV5', VoucherCode::forDisplay('7F3K9M2QV5', 5));
     }
 
     public function test_display_form_round_trips_through_normalisation(): void
     {
-        $code = VoucherCode::generate('KAS', 10);
+        $code = VoucherCode::generate(9);
 
-        $this->assertSame($code, VoucherCode::normalise(VoucherCode::forDisplay($code, 4)));
+        $this->assertSame($code, VoucherCode::normalise(VoucherCode::forDisplay($code, 5)));
     }
 
     public function test_prefixes_containing_folded_characters_are_rejected(): void
     {
-        // I, L and O normalise to 1, 1 and 0, so a prefix using them would print
-        // one string and redeem as another.
         $this->assertFalse(VoucherCode::isValidPrefix('KSI'));
         $this->assertFalse(VoucherCode::isValidPrefix('COL'));
         $this->assertFalse(VoucherCode::isValidPrefix('KAS-'));
@@ -200,7 +190,7 @@ class VoucherCodeTest extends TestCase
 
     public function test_suffix_returns_the_last_group_for_support_lookups(): void
     {
-        $this->assertSame('QVW5', VoucherCode::suffix('KAS7F3K9M2QVW5'));
+        $this->assertSame('M2QV5', VoucherCode::suffix('7F3K9M2QV5', 5));
     }
 
     public function test_hashing_is_deterministic_across_input_formats(): void
@@ -208,16 +198,15 @@ class VoucherCodeTest extends TestCase
         $hasher = new VoucherCodeHasher('test-key');
 
         $this->assertSame(
-            $hasher->hash('KAS7F3K9M2QVW5'),
-            $hasher->hash('kas7-f3k9-m2qv-w5'),
+            $hasher->hash('7F3K9M2QV5'),
+            $hasher->hash('7f3k9-m2qv5'),
         );
     }
 
     public function test_hashing_depends_on_the_key(): void
     {
-        $code = 'KAS7F3K9M2QVW5';
+        $code = '7F3K9M2QV5';
 
-        // A stolen vouchers table is useless without the separate hash key.
         $this->assertNotSame(
             (new VoucherCodeHasher('key-one'))->hash($code),
             (new VoucherCodeHasher('key-two'))->hash($code),
@@ -227,9 +216,9 @@ class VoucherCodeTest extends TestCase
     public function test_hash_matching_rejects_a_different_code(): void
     {
         $hasher = new VoucherCodeHasher('test-key');
-        $hash = $hasher->hash('KAS7F3K9M2QVW5');
+        $hash = $hasher->hash('7F3K9M2QV5');
 
-        $this->assertTrue($hasher->matches('KAS7F3K9M2QVW5', $hash));
-        $this->assertFalse($hasher->matches('KAS7F3K9M2QVW6', $hash));
+        $this->assertTrue($hasher->matches('7F3K9M2QV5', $hash));
+        $this->assertFalse($hasher->matches('7F3K9M2QV6', $hash));
     }
 }
