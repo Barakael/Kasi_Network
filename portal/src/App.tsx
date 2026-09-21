@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
+  formatBytes,
+  formatDuration,
   formatPrice,
   portalApi,
   type Bootstrap,
@@ -34,7 +36,6 @@ export function App() {
   const [deviceMac, setDeviceMac] = useState('');
   const [deviceCode, setDeviceCode] = useState('');
   const [autoRedeemed, setAutoRedeemed] = useState(false);
-  const [showPay, setShowPay] = useState(false);
   const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
 
   const missingSite = site
@@ -58,6 +59,9 @@ export function App() {
       .then((data) => {
         setBoot(data);
         document.title = data.branding.operator;
+        if (data.plans[0]) {
+          setPlan(data.plans[0]);
+        }
       })
       .catch((err: Error) => setError(err.message));
   }, [params, site]);
@@ -123,21 +127,34 @@ export function App() {
     }
     setBusy(true);
     setError(null);
-    setStatus('Check your phone for the payment prompt…');
     try {
-      const created = await portalApi.createOrder(boot.token, plan.id, phone);
-      for (let i = 0; i < 45; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
-        const current = await portalApi.order(boot.token, created.data.uuid);
-        if (current.data.code) {
-          loginWith(current.data.code);
-          return;
+      if (boot.capabilities.online_payments) {
+        setStatus('Check your phone for the payment prompt…');
+        const created = await portalApi.createOrder(boot.token, plan.id, phone);
+        for (let i = 0; i < 45; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const current = await portalApi.order(boot.token, created.data.uuid);
+          if (current.data.code) {
+            loginWith(current.data.code);
+            return;
+          }
+          if (['failed', 'expired', 'voided'].includes(current.data.status)) {
+            throw new Error(current.data.status_label || 'Payment did not complete.');
+          }
         }
-        if (['failed', 'expired', 'voided'].includes(current.data.status)) {
-          throw new Error(current.data.status_label || 'Payment did not complete.');
-        }
+        throw new Error('Still waiting for payment. You can close this and try again.');
       }
-      throw new Error('Still waiting for payment. You can close this and try again.');
+
+      if (boot.capabilities.demo_checkout) {
+        setStatus('Inatengeneza voucher…');
+        const issued = await portalApi.checkout(boot.token, plan.id);
+        setCode(issued.display_code || issued.code);
+        setStatus(`${issued.plan}: ${issued.display_code || issued.code}`);
+        await redeemCode(issued.code);
+        return;
+      }
+
+      throw new Error('Lipa kwa mhudumu, kisha weka voucher hapa chini.');
     } catch (err) {
       setError((err as Error).message);
       setStatus(null);
@@ -237,6 +254,72 @@ export function App() {
         </p>
       )}
 
+      <section className="portal-block">
+        <div>
+          <h2 className="portal-brand text-lg text-leaf-900">Paketi</h2>
+          <p className="mt-0.5 text-sm text-leaf-700">Chagua fungu, kisha lipa ili upate voucher.</p>
+        </div>
+        <ul className="space-y-2">
+          {boot.plans.map((item) => {
+            const selected = plan?.id === item.id;
+            return (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => setPlan(item)}
+                  className={`w-full rounded-xl border px-3 py-2.5 text-left ${
+                    selected ? 'border-leaf-600 bg-leaf-100' : 'border-leaf-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-leaf-900">{item.name}</span>
+                    <span className="shrink-0 font-bold text-leaf-700">
+                      {formatPrice(item.price_minor, boot.branding.currency)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-leaf-700">
+                    {item.description || item.billing_period_label}
+                  </p>
+                  <p className="mt-1 text-xs text-leaf-600">
+                    {formatDuration(item.validity_seconds) ?? '—'}
+                    {' · '}
+                    {formatBytes(item.data_cap_bytes) ?? 'Unlimited'}
+                    {' · '}
+                    {item.device_limit === 1 ? '1 kifaa' : `${item.device_limit} vifaa`}
+                  </p>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {plan && (boot.capabilities.online_payments || boot.capabilities.demo_checkout) && (
+          <form onSubmit={onBuy} className="space-y-2">
+            {boot.capabilities.online_payments && (
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                inputMode="tel"
+                className="portal-field"
+                placeholder="07XXXXXXXX"
+                aria-label="Namba ya simu"
+              />
+            )}
+            {!boot.capabilities.online_payments && (
+              <p className="text-xs text-leaf-700">
+                Malipo ya simu hayajawezeshwa. Gusa ili upate voucher ya {plan.name}.
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={busy || (boot.capabilities.online_payments && phone.length < 9)}
+              className="portal-cta portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
+            >
+              {busy ? 'Inasubiri…' : `Lipa ${formatPrice(plan.price_minor, boot.branding.currency)} — ${plan.name}`}
+            </button>
+          </form>
+        )}
+      </section>
+
       <form onSubmit={onRedeem} className="portal-block">
         <div>
           <h2 className="text-sm font-semibold text-leaf-800">Voucher yako</h2>
@@ -266,47 +349,6 @@ export function App() {
         >
           {busy ? 'Inaunganisha…' : 'Pokea Wi‑Fi'}
         </button>
-        {boot.capabilities.online_payments && (
-          <button
-            type="button"
-            onClick={() => setShowPay((open) => !open)}
-            className="text-center text-sm font-medium text-leaf-700 underline decoration-leaf-300 underline-offset-2"
-          >
-            {showPay ? 'Ficha malipo' : 'Au lipa kwa mobile money'}
-          </button>
-        )}
-        {showPay && boot.capabilities.online_payments && (
-          <form onSubmit={onBuy} className="space-y-2">
-            {boot.plans.slice(0, 2).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setPlan(item)}
-                className={`min-h-11 w-full rounded-xl border px-3 text-left text-sm ${
-                  plan?.id === item.id ? 'border-leaf-600 bg-leaf-100' : 'border-leaf-200 bg-white'
-                }`}
-              >
-                <span className="font-semibold">{item.name}</span>
-                <span className="ml-2 text-leaf-700">{formatPrice(item.price_minor, boot.branding.currency)}</span>
-              </button>
-            ))}
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              inputMode="tel"
-              className="portal-field"
-              placeholder="07XXXXXXXX"
-              aria-label="Namba ya simu"
-            />
-            <button
-              type="submit"
-              disabled={busy || !plan || phone.length < 9}
-              className="portal-btn w-full bg-leaf-700 text-white disabled:opacity-45"
-            >
-              {busy ? 'Inasubiri…' : 'Lipa na uungane'}
-            </button>
-          </form>
-        )}
       </form>
 
       <section className="portal-block">

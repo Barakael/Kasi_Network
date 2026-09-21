@@ -1,0 +1,28 @@
+# FreeRADIUS only, talking to MySQL already running on the Windows host
+# (Laragon). Do not start docker/compose.yaml's mysql — that would fight
+# for port 3306.
+#
+#   docker compose -f docker/compose.radius-local.yaml up -d --build
+#
+# MikroTik RADIUS server address: this PC's LAN IP (192.168.88.10).
+
+name: kasi-radius
+
+services:
+  freeradius:
+    build:
+      context: ./freeradius
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      RADIUS_DB_HOST: host.docker.internal
+      RADIUS_DB_PORT: "3306"
+      RADIUS_DB_NAME: kasi
+      RADIUS_DB_USER: radius
+      RADIUS_DB_PASSWORD: radius_secret
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    volumes:
+      - ./freeradius/config:/opt/kasi-raddb:ro
+    command: ["radiusd", "-f", "-l", "stdout"]

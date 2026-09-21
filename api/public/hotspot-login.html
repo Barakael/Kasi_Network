@@ -3,20 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kasi WiFi login</title>
-  <meta http-equiv="refresh" content="0;url=http://192.168.88.10:5173/?site=kasi-demo-site-1&mac=$(mac)&ip=$(ip)&link_login=$(link-login-only)&link_orig=$(link-orig)&chap_id=$(chap-id)&chap_challenge=$(chap-challenge)">
+  <title>Kasi WiFi</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 24px; text-align: center; }
-    a { display: inline-block; margin-top: 16px; padding: 16px 24px; background: #2563eb; color: #fff; font-weight: 700; text-decoration: none; border-radius: 12px; min-width: 220px; }
+    html { color-scheme: light only; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #e8eef6;
+      color: #0b1220;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      text-align: center;
+    }
+    .card {
+      width: 100%;
+      max-width: 22rem;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 28px 20px;
+    }
+    h1 { margin: 0; font-size: 1.45rem; }
+    p { margin: 12px 0 0; font-size: 1.02rem; line-height: 1.45; color: #1e293b; }
+    a {
+      display: block;
+      margin-top: 22px;
+      padding: 16px 18px;
+      background: #1d4ed8;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      text-decoration: none;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
-  <p>Continue to Kasi WiFi to pick a bundle or enter a voucher.</p>
-  <p>
-    <a id="go" href="http://192.168.88.10:5173/?site=kasi-demo-site-1&mac=$(mac)&ip=$(ip)&link_login=$(link-login-only)&link_orig=$(link-orig)&chap_id=$(chap-id)&chap_challenge=$(chap-challenge)">Open login</a>
-  </p>
-  <script>
-    setTimeout(function () { window.location.replace(document.getElementById("go").href); }, 300);
-  </script>
+  <div class="card">
+    <h1>Kasi Demo WiFi</h1>
+    <p>You are on the hotspot. Tap continue to see packages and enter a voucher.</p>
+    <p>Uko kwenye Wi-Fi. Gusa ili uone paketi au uweke vocha.</p>
+    <a href="http://192.168.88.10:5173/?site=kasi-demo-site-1&amp;mac=$(mac)&amp;ip=$(ip)&amp;link_login=$(link-login-only)&amp;link_orig=$(link-orig)&amp;chap_id=$(chap-id)&amp;chap_challenge=$(chap-challenge)">Continue / Endelea</a>
+  </div>
 </body>
 </html>

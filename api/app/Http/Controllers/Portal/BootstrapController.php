@@ -88,6 +88,7 @@ class BootstrapController
             ],
             'capabilities' => [
                 'online_payments' => $site->tenant->acceptsOnlinePayments(),
+                'demo_checkout' => (bool) config('kasi.demo_checkout'),
                 /*
                  * Listing nearby devices to bind a TV to needs the RouterOS API.
                  * Without it the portal falls back to typing a MAC by hand.

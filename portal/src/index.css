@@ -134,7 +134,8 @@ body,
   flex-direction: column;
   gap: 0.95rem;
   margin-top: -1.5rem;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-radius: 1.75rem 1.75rem 0 0;
   background: rgb(244 250 245 / 0.97);
   padding: 1.2rem 1.2rem max(0.9rem, env(safe-area-inset-bottom));

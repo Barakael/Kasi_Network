@@ -41,7 +41,7 @@ export type Bootstrap = {
   site: { name: string; ssid: string | null };
   branding: Branding;
   client: { mac: string | null; mac_known: boolean };
-  capabilities: { online_payments: boolean; device_discovery: boolean };
+  capabilities: { online_payments: boolean; demo_checkout: boolean; device_discovery: boolean };
   plans: Plan[];
 };
 
@@ -94,6 +94,13 @@ export const portalApi = {
       headers: authHeaders(token),
       body: JSON.stringify({ code }),
     }).then((res) => parse<RedeemResult>(res)),
+
+  checkout: (token: string, planId: number) =>
+    fetch('/api/portal/checkout', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ plan_id: planId }),
+    }).then((res) => parse<{ code: string; display_code: string; plan: string }>(res)),
 
   createOrder: (token: string, planId: number, phone: string) =>
     fetch('/api/portal/orders', {

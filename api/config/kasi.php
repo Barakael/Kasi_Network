@@ -121,4 +121,14 @@ return [
         'currency' => env('SNIPPE_CURRENCY', 'TZS'),
     ],
 
+    /*
+    | When Snippe is not configured, the portal can still issue a voucher after
+    | the customer picks a package. Turn this off in production unless you
+    | intend to give away codes without payment.
+    */
+    'demo_checkout' => filter_var(
+        env('KASI_PORTAL_DEMO_CHECKOUT', env('APP_ENV') === 'local'),
+        FILTER_VALIDATE_BOOL,
+    ),
+
 ];

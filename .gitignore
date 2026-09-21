@@ -36,3 +36,5 @@ docs/load-test-results/*.json
 .idea/
 .vscode/
 *.swp
+package-lock.json
+portal/package-lock.json
