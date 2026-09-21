@@ -35,7 +35,7 @@ return new class extends Migration
 
             // Lets support staff find a voucher from the last group of
             // characters a caller reads out, without decrypting the table.
-            $table->char('code_suffix', 4)->nullable();
+            $table->char('code_suffix', 8)->nullable();
 
             // unused | active | exhausted | expired | disabled
             $table->string('status', 20)->default('unused');
