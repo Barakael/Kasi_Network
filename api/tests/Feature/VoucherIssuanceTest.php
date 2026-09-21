@@ -63,20 +63,6 @@ class VoucherIssuanceTest extends TestCase
     }
 
     #[Test]
-    public function issued_codes_carry_the_tenant_prefix_and_a_valid_check_character(): void
-    {
-        $vouchers = app(VoucherIssuer::class)->issue($this->plan, 20);
-
-        foreach ($vouchers as $voucher) {
-            $this->assertStringStartsWith('KAS', $voucher->code);
-            $this->assertTrue(
-                VoucherCode::hasValidCheckCharacter($voucher->code),
-                "Issued code {$voucher->code} has a bad check character.",
-            );
-        }
-    }
-
-    #[Test]
     public function it_snapshots_the_plan_terms_onto_each_voucher(): void
     {
         $voucher = app(VoucherIssuer::class)->issueOne($this->plan);
@@ -308,11 +294,26 @@ class VoucherIssuanceTest extends TestCase
     }
 
     #[Test]
+    public function issued_codes_are_ten_characters_without_a_shared_prefix(): void
+    {
+        $codes = app(VoucherIssuer::class)->issue($this->plan, 20)->pluck('code');
+
+        foreach ($codes as $code) {
+            $this->assertSame(10, strlen($code));
+            $this->assertTrue(VoucherCode::hasValidCheckCharacter($code));
+        }
+
+        $this->assertSame(20, $codes->unique()->count());
+        $this->assertGreaterThan(1, $codes->map(fn (string $c) => substr($c, 0, 3))->unique()->count());
+    }
+
+    #[Test]
     public function the_stored_suffix_matches_the_end_of_the_code(): void
     {
         $voucher = app(VoucherIssuer::class)->issueOne($this->plan);
+        $length = (int) config('kasi.voucher.group_size');
 
-        $this->assertSame(substr($voucher->code, -4), $voucher->code_suffix);
+        $this->assertSame(substr($voucher->code, -$length), $voucher->code_suffix);
     }
 
     #[Test]
