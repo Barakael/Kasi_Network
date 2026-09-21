@@ -18,11 +18,19 @@ class RedeemController
             'code' => ['required', 'string', 'max:32'],
         ]);
 
-        $voucher = $redeemer->redeem($validated['code'], $context);
+        $voucher = $redeemer->redeem($validated['code'], $context)->loadMissing('plan');
 
         return response()->json([
             'code' => $voucher->code,
             'display_code' => $voucher->displayCode(),
+            'session' => [
+                'plan' => $voucher->plan?->name,
+                'validity_seconds' => $voucher->validity_seconds,
+                'duration_seconds' => $voucher->duration_seconds,
+                'data_cap_bytes' => $voucher->data_cap_bytes,
+                'device_limit' => $voucher->device_limit,
+                'expires_at' => $voucher->expires_at?->toIso8601String(),
+            ],
             'voucher' => new VoucherResource($voucher),
         ]);
     }

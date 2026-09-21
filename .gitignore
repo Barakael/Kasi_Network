@@ -9,6 +9,9 @@ build/
 .env.*
 !.env.example
 
+portal/node_modules/
+api/dump.rdb
+
 # PHP
 vendor/
 api/storage/*.key
