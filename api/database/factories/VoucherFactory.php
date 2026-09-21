@@ -21,7 +21,7 @@ class VoucherFactory extends Factory
      */
     public function definition(): array
     {
-        $code = VoucherCode::generate('KAS', (int) config('kasi.voucher.body_length'));
+        $code = VoucherCode::generate((int) config('kasi.voucher.body_length'));
 
         return [
             /*
