@@ -216,4 +216,29 @@ final readonly class RadiusProvisioner
             ],
         );
     }
+
+    /**
+     * Writes the wall-clock Expiration attribute when a voucher is first used.
+     *
+     * Matches the FreeRADIUS post-auth stamp so portal-first redemption (lab
+     * testing without a MikroTik) and RADIUS-first redemption stay consistent.
+     * Format must match FreeRADIUS Expiration module: "Mon DD YYYY HH:MM:SS".
+     */
+    public function stampExpiration(Voucher $voucher): void
+    {
+        if ($voucher->expires_at === null) {
+            return;
+        }
+
+        DB::table('radcheck')->updateOrInsert(
+            [
+                'username' => $voucher->code,
+                'attribute' => RadiusAttribute::EXPIRATION,
+            ],
+            [
+                'op' => ':=',
+                'value' => $voucher->expires_at->utc()->format('M j Y H:i:s'),
+            ],
+        );
+    }
 }
