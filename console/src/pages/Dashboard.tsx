@@ -30,13 +30,13 @@ export function DashboardPage() {
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <h2 className="mb-3 font-semibold">Revenue, last 14 days</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Revenue, last 14 days</h2>
           <Suspense fallback={<p className="text-sm text-ink-700">Loading chart…</p>}>
             <RevenueChart series={data?.revenue_series ?? []} currency={currency} />
           </Suspense>
         </Card>
         <Card className="lg:col-span-2">
-          <h2 className="mb-3 font-semibold">Open sessions</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Open sessions</h2>
           <ul className="space-y-2 text-sm">
             {(sessions.data?.data ?? []).slice(0, 8).map((session) => (
               <li key={session.acctuniqueid} className="flex justify-between gap-2">
@@ -56,7 +56,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card>
       <p className="text-sm text-ink-700">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight text-ink-900">{value}</p>
     </Card>
   );
 }

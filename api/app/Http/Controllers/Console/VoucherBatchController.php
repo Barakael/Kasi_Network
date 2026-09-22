@@ -76,17 +76,26 @@ class VoucherBatchController
             'status' => BatchStatus::Generating,
         ]);
 
-        IssueVoucherBatch::dispatch($batch);
+        /*
+         * Small print packs finish in this request so the operator can print
+         * without a queue worker. Large runs still go to Redis.
+         */
+        if ($batch->quantity <= (int) config('kasi.voucher.sync_issue_max')) {
+            IssueVoucherBatch::dispatchSync($batch);
+        } else {
+            IssueVoucherBatch::dispatch($batch);
+        }
 
         $audit->record('voucher_batch.created', $batch, [
             'quantity' => $batch->quantity,
             'plan_id' => $batch->plan_id,
         ]);
 
-        return (new VoucherBatchResource($batch->load('plan')))
+        $batch->refresh();
+
+        return (new VoucherBatchResource($batch->load('plan')->loadCount(VoucherBatchResource::countsFor())))
             ->response()
-            // 202: the batch exists but its codes are still being written.
-            ->setStatusCode(202);
+            ->setStatusCode($batch->status === BatchStatus::Ready ? 201 : 202);
     }
 
     public function show(VoucherBatch $batch): VoucherBatchResource

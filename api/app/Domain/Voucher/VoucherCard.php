@@ -39,7 +39,7 @@ final readonly class VoucherCard
         return new self(
             code: $code,
             displayCode: $voucher->displayCode(),
-            qrSvg: self::qrSvg(self::redemptionUrl($code, $site)),
+            qrSvg: self::qrSvg(self::qrPayload($code)),
             planName: $voucher->plan->name,
             terms: self::terms($voucher),
             ssid: $site?->ssid ?? $tenant->name,
@@ -67,6 +67,20 @@ final readonly class VoucherCard
     }
 
     /**
+     * What is actually drawn into the QR modules.
+     *
+     * The printed square is ~20 mm. A full portal URL is a version-5+ code whose
+     * modules are too small for a phone camera to lock onto. The normalised
+     * voucher code is ten characters and fits a version-1 QR, which is what the
+     * in-portal scanner and cheap cameras can read. Phone camera apps that are
+     * not on the hotspot still show the code as text to type.
+     */
+    public static function qrPayload(string $code): string
+    {
+        return VoucherCode::normalise($code);
+    }
+
+    /**
      * A QR code as inline SVG.
      *
      * SVG rather than a raster image so the print stays sharp at any card size,
@@ -77,9 +91,7 @@ final readonly class VoucherCard
     private static function qrSvg(string $payload): string
     {
         $writer = new Writer(new ImageRenderer(
-            // Fixed module size with no margin; the card's own padding provides
-            // the quiet zone, and a margin here would shrink the code instead.
-            new RendererStyle(size: 132, margin: 0),
+            new RendererStyle(size: 160, margin: 4),
             new SvgImageBackEnd,
         ));
 
@@ -87,8 +99,14 @@ final readonly class VoucherCard
          * Medium error correction rather than the default L. Cards get creased,
          * thumbed and rained on, and the payload is short enough that the extra
          * redundancy costs nothing in module count.
+         *
+         * Strip the XML declaration: Bacon emits <?xml …?> which, inlined in
+         * HTML, makes some browsers treat the SVG as a broken image instead of
+         * a drawable QR.
          */
-        return $writer->writeString($payload, ecLevel: ErrorCorrectionLevel::M());
+        $svg = $writer->writeString($payload, ecLevel: ErrorCorrectionLevel::M());
+
+        return (string) preg_replace('/^<\?xml[^>]*\?>\s*/', '', $svg);
     }
 
     /**

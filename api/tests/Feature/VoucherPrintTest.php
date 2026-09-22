@@ -62,7 +62,8 @@ class VoucherPrintTest extends TestCase
             ->assertSee('4 Mbps')
             // Inline SVG rather than an image URL, so a card cannot print with a
             // hole where its code should be.
-            ->assertSee('<svg', escape: false);
+            ->assertSee('<svg', escape: false)
+            ->assertDontSee('<?xml', escape: false);
     }
 
     #[Test]
@@ -287,6 +288,10 @@ class VoucherPrintTest extends TestCase
          * and carries the code: a relative link cannot be scanned from paper.
          */
         $this->assertSame($expected, VoucherCard::redemptionUrl($voucher->code));
+        $this->assertSame(
+            \App\Domain\Voucher\VoucherCode::normalise($voucher->code),
+            VoucherCard::qrPayload($voucher->code),
+        );
     }
 
     private function readyBatch(int $quantity): VoucherBatch

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { createQrDetector, extractVoucherCode } from './voucherQr';
+import { decodeQrFromFile, decodeQrFromVideo } from './voucherQr';
 
 type Props = {
   open: boolean;
@@ -12,7 +12,7 @@ export function QrScanner({ open, onClose, onCode }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const onCodeRef = useRef(onCode);
   const onCloseRef = useRef(onClose);
-  const [hint, setHint] = useState('Point at the voucher QR…');
+  const [hint, setHint] = useState('Point at the printed voucher QR…');
   const [cameraOk, setCameraOk] = useState(true);
 
   onCodeRef.current = onCode;
@@ -24,20 +24,19 @@ export function QrScanner({ open, onClose, onCode }: Props) {
     }
 
     let cancelled = false;
-    let raf = 0;
-    const detector = createQrDetector();
+    let timer = 0;
 
     async function start() {
-      if (!detector) {
+      if (!navigator.mediaDevices?.getUserMedia) {
         setCameraOk(false);
-        setHint('This browser cannot read QR live. Use “Take photo” below, or type the code.');
+        setHint('This page cannot open the camera. Use “Take photo of QR”, or type the code.');
         return;
       }
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { facingMode: { ideal: 'environment' } },
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -51,33 +50,28 @@ export function QrScanner({ open, onClose, onCode }: Props) {
         video.srcObject = stream;
         await video.play();
         setCameraOk(true);
-        setHint('Point at the voucher QR…');
+        setHint('Point at the printed voucher QR…');
 
         const tick = async () => {
-          if (cancelled || !videoRef.current || videoRef.current.readyState < 2) {
-            raf = requestAnimationFrame(() => void tick());
+          if (cancelled || !videoRef.current) {
             return;
           }
           try {
-            const codes = await detector.detect(videoRef.current);
-            const raw = codes[0]?.rawValue;
-            if (raw) {
-              const code = extractVoucherCode(raw);
-              if (code) {
-                onCodeRef.current(code);
-                onCloseRef.current();
-                return;
-              }
+            const code = await decodeQrFromVideo(videoRef.current);
+            if (code) {
+              onCodeRef.current(code);
+              onCloseRef.current();
+              return;
             }
           } catch {
-            // Keep scanning; transient detect errors are common while focusing.
+            // Keep scanning while the camera focuses.
           }
-          raf = requestAnimationFrame(() => void tick());
+          timer = window.setTimeout(() => void tick(), 250);
         };
-        raf = requestAnimationFrame(() => void tick());
+        timer = window.setTimeout(() => void tick(), 250);
       } catch {
         setCameraOk(false);
-        setHint('Camera blocked. Allow camera access, or use “Take photo”.');
+        setHint('Camera blocked. Allow camera access, or use “Take photo of QR”.');
       }
     }
 
@@ -85,7 +79,7 @@ export function QrScanner({ open, onClose, onCode }: Props) {
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
@@ -98,19 +92,11 @@ export function QrScanner({ open, onClose, onCode }: Props) {
       return;
     }
 
-    const detector = createQrDetector();
-    if (!detector) {
-      setHint('QR reading is not available on this phone. Type the voucher code instead.');
-      return;
-    }
-
+    setHint('Reading photo…');
     try {
-      const bitmap = await createImageBitmap(file);
-      const codes = await detector.detect(bitmap);
-      bitmap.close();
-      const code = codes[0]?.rawValue ? extractVoucherCode(codes[0].rawValue) : null;
+      const code = await decodeQrFromFile(file);
       if (!code) {
-        setHint('No voucher QR found in that photo. Try again closer to the code.');
+        setHint('No voucher QR found in that photo. Fill the frame with the code and try again.');
         return;
       }
       onCode(code);
@@ -144,10 +130,10 @@ export function QrScanner({ open, onClose, onCode }: Props) {
 
       <div className="relative mx-4 flex-1 overflow-hidden rounded-3xl bg-black">
         {cameraOk ? (
-          <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
+          <video ref={videoRef} className="h-full w-full object-cover" playsInline autoPlay muted />
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
-            Camera preview unavailable
+            {hint}
           </div>
         )}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

@@ -13,6 +13,7 @@
     "size": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
     "preact": "^10.28.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

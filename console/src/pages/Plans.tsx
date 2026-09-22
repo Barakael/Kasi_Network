@@ -127,7 +127,7 @@ function PlanCard({ plan, currency, onRetire }: { plan: Plan; currency: string; 
     <Card>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="font-semibold">{plan.name}</h2>
+          <h2 className="text-lg font-semibold text-ink-900">{plan.name}</h2>
           <p className="text-sm text-ink-700">{plan.billing_period_label}</p>
         </div>
         <Badge tone={plan.is_active === false ? 'slate' : 'green'}>{money(plan.price_minor, currency)}</Badge>

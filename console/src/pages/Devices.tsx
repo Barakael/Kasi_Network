@@ -20,28 +20,28 @@ export function DevicesPage() {
       <Card>
         {devices.data?.data.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-left text-sm">
+            <table className="console-table">
               <thead>
-                <tr className="border-b text-ink-700">
-                  <th className="py-2 pr-3">MAC</th>
-                  <th className="py-2 pr-3">Vendor</th>
-                  <th className="py-2 pr-3">Label</th>
-                  <th className="py-2 pr-3">Voucher</th>
-                  <th className="py-2 pr-3">Status</th>
+                <tr>
+                  <th>MAC</th>
+                  <th>Vendor</th>
+                  <th>Label</th>
+                  <th>Voucher</th>
+                  <th>Status</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {devices.data.data.map((device) => (
-                  <tr key={device.id} className="border-b border-slate-100">
-                    <td className="py-2 pr-3 font-mono text-xs">{device.mac}</td>
-                    <td className="py-2 pr-3">{device.vendor || '—'}</td>
-                    <td className="py-2 pr-3">{device.label || '—'}</td>
-                    <td className="py-2 pr-3 font-mono">…{device.voucher_suffix}</td>
-                    <td className="py-2 pr-3">
+                  <tr key={device.id}>
+                    <td className="font-mono text-xs">{device.mac}</td>
+                    <td>{device.vendor || '—'}</td>
+                    <td>{device.label || '—'}</td>
+                    <td className="font-mono">…{device.voucher_suffix}</td>
+                    <td>
                       <Badge tone={device.status === 'active' ? 'green' : 'slate'}>{device.status}</Badge>
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="text-right">
                       {device.status === 'active' && (
                         <button type="button" className={secondaryBtn} onClick={() => revoke.mutate(device.id)}>
                           Revoke

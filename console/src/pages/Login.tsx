@@ -30,15 +30,25 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
-      <form onSubmit={(e) => void onSubmit(e)} className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-10">
+      <form
+        onSubmit={(e) => void onSubmit(e)}
+        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+      >
         <p className="text-sm font-semibold text-brand-700">Kasi Network</p>
-        <h1 className="mt-1 text-2xl font-bold text-ink-900">Sign in</h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">Sign in</h1>
         <p className="mt-1 mb-6 text-sm text-ink-700">Operator console for hotspots, vouchers and sessions.</p>
         <ErrorBanner message={error} />
         <div className="space-y-3">
           <Field label="Email">
-            <input className={inputClass} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input
+              className={inputClass}
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </Field>
           <Field label="Password">
             <input

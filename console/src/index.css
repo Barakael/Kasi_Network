@@ -13,8 +13,13 @@
   --color-ink-700: oklch(0.36 0.03 258);
 }
 
+html {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
+  min-height: 100dvh;
   font-family:
     system-ui,
     -apple-system,
@@ -23,4 +28,53 @@ body {
     sans-serif;
   background: #f8fafc;
   color: var(--color-ink-900);
+}
+
+.console-shell {
+  min-height: 100dvh;
+}
+
+.console-nav-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.console-nav-link[aria-current='page'] {
+  background: var(--color-brand-600);
+  color: #fff;
+}
+
+.console-table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.console-table th {
+  padding: 0.625rem 0.75rem 0.625rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-700);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.console-table td {
+  padding: 0.75rem 0.75rem 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.console-table tr:last-child td {
+  border-bottom: none;
 }

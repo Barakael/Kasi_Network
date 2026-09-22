@@ -147,8 +147,10 @@
 
         .card__qr {
             flex: 0 0 auto;
-            width: 15mm;
-            height: 15mm;
+            width: 22mm;
+            height: 22mm;
+            padding: 1.5mm;
+            background: #fff;
         }
 
         .card__qr svg { width: 100%; height: 100%; display: block; }
@@ -222,7 +224,7 @@
 
                 <div>
                     <div class="card__instructions">
-                        Scan the QR on the hotspot portal to connect. Code is the fallback.
+                        Scan this QR on the Wi-Fi login page, or type the code.
                     </div>
                     @if ($card->expiryNote)
                         <div class="card__footer">{{ $card->expiryNote }}</div>

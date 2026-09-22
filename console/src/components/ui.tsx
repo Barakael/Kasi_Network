@@ -1,23 +1,23 @@
 import type { ReactNode } from 'react';
 
 export const inputClass =
-  'min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-ink-900 outline-none focus:border-brand-500';
+  'min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-ink-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
 
 export const primaryBtn =
-  'inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 font-semibold text-white disabled:opacity-50';
+  'inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 font-semibold text-white hover:bg-brand-700 disabled:opacity-50';
 
 export const secondaryBtn =
-  'inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-semibold text-ink-800';
+  'inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-semibold text-ink-800 hover:bg-slate-50';
 
 export const dangerBtn =
-  'inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-4 font-semibold text-white disabled:opacity-50';
+  'inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-4 font-semibold text-white hover:bg-red-700 disabled:opacity-50';
 
 export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold text-ink-900">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-ink-700">{subtitle}</p>}
+        <h1 className="text-2xl font-bold tracking-tight text-ink-900">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-2xl text-sm text-ink-700">{subtitle}</p>}
       </div>
       {children}
     </header>
@@ -25,7 +25,9 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${className}`}>{children}</section>;
+  return (
+    <section className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</section>
+  );
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {

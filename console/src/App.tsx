@@ -14,7 +14,7 @@ import type { ReactNode } from 'react';
 
 function Splash() {
   return (
-    <main className="flex min-h-dvh items-center justify-center text-ink-800">
+    <main className="flex min-h-dvh items-center justify-center bg-slate-50 text-ink-700">
       Loading console…
     </main>
   );

@@ -61,7 +61,7 @@ export function RoutersPage() {
       <ErrorBanner message={error} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 font-semibold">New site</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">New site</h2>
           <form
             className="space-y-3"
             onSubmit={(event: FormEvent) => {
@@ -84,7 +84,7 @@ export function RoutersPage() {
           </form>
         </Card>
         <Card>
-          <h2 className="mb-3 font-semibold">New router</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">New router</h2>
           <form
             className="space-y-3"
             onSubmit={(event: FormEvent) => {

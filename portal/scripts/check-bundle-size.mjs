@@ -32,7 +32,14 @@ try {
 }
 
 const files = await collectFiles(distDir);
-const rendering = files.filter((file) => ['.js', '.css', '.html'].includes(extname(file)));
+const rendering = files.filter((file) => {
+  if (!['.js', '.css', '.html'].includes(extname(file))) {
+    return false;
+  }
+  // jsQR loads only after the customer taps Scan, so it is not part of the
+  // first captive-portal payload every unauthenticated client must download.
+  return !/jsqr/i.test(file.replaceAll('\\', '/'));
+});
 
 let total = 0;
 const rows = [];

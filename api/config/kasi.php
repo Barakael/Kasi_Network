@@ -58,6 +58,9 @@ return [
         // Largest batch an operator can request in one go. Above this, printing
         // becomes unmanageable long before the database notices.
         'max_batch_quantity' => (int) env('KASI_VOUCHER_MAX_BATCH', 10000),
+        // Packs at or below this size issue in the HTTP request so Print is
+        // available immediately. Larger packs still queue.
+        'sync_issue_max' => (int) env('KASI_VOUCHER_SYNC_ISSUE_MAX', 250),
         // Redemption attempts allowed per client MAC per minute.
         'redeem_attempts_per_minute' => (int) env('KASI_VOUCHER_REDEEM_ATTEMPTS', 8),
         // Voucher cards per printed A4 sheet, as columns x rows.

@@ -15,7 +15,7 @@ export function ReportsPage() {
       <PageHeader title="Reports" subtitle="Paid mobile-money orders and daily totals." />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 font-semibold">Revenue by day</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Revenue by day</h2>
           {(revenue.data?.data.length ?? 0) === 0 ? (
             <Empty>No settled orders in the last 30 days.</Empty>
           ) : (
@@ -32,7 +32,7 @@ export function ReportsPage() {
           )}
         </Card>
         <Card>
-          <h2 className="mb-3 font-semibold">Recent orders</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Recent orders</h2>
           {(orders.data?.data.length ?? 0) === 0 ? (
             <Empty>No orders yet.</Empty>
           ) : (

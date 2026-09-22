@@ -21,26 +21,26 @@ export function SessionsPage() {
       <Card>
         {sessions.data?.data.length ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[40rem] text-left text-sm">
+            <table className="console-table min-w-[40rem]">
               <thead>
-                <tr className="border-b text-ink-700">
-                  <th className="py-2 pr-3">MAC</th>
-                  <th className="py-2 pr-3">IP</th>
-                  <th className="py-2 pr-3">Router</th>
-                  <th className="py-2 pr-3">Time</th>
-                  <th className="py-2 pr-3">Data</th>
+                <tr>
+                  <th>MAC</th>
+                  <th>IP</th>
+                  <th>Router</th>
+                  <th>Time</th>
+                  <th>Data</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {sessions.data.data.map((session) => (
-                  <tr key={session.acctuniqueid} className="border-b border-slate-100">
-                    <td className="py-2 pr-3 font-mono text-xs">{session.callingstationid}</td>
-                    <td className="py-2 pr-3">{session.framedipaddress}</td>
-                    <td className="py-2 pr-3">{session.nasipaddress}</td>
-                    <td className="py-2 pr-3">{clock(session.seconds)}</td>
-                    <td className="py-2 pr-3">{bytes(session.bytes)}</td>
-                    <td className="py-2 text-right">
+                  <tr key={session.acctuniqueid}>
+                    <td className="font-mono text-xs">{session.callingstationid}</td>
+                    <td>{session.framedipaddress}</td>
+                    <td>{session.nasipaddress}</td>
+                    <td>{clock(session.seconds)}</td>
+                    <td>{bytes(session.bytes)}</td>
+                    <td className="text-right">
                       <button
                         type="button"
                         className={dangerBtn}

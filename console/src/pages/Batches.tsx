@@ -51,9 +51,13 @@ export function BatchesPage() {
 
   return (
     <div>
-      <PageHeader title="Voucher batches" subtitle="Issue a print run, then open the sheet in a new tab." />
+      <PageHeader
+        title="Vouchers"
+        subtitle="Each row is a print pack. Tap Print voucher cards to open the codes in a new tab, then use the browser print dialog."
+      />
       <ErrorBanner message={error} />
-      <Card className="mb-4">
+      <Card className="mb-6">
+        <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">New print pack</h2>
         <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Field label="Bundle">
             <select className={inputClass} value={form.plan_id} onChange={(e) => setForm({ ...form, plan_id: e.target.value })} required>
@@ -65,7 +69,7 @@ export function BatchesPage() {
               ))}
             </select>
           </Field>
-          <Field label="Quantity">
+          <Field label="How many vouchers">
             <input className={inputClass} type="number" min={1} max={10000} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
           </Field>
           <Field label="Site">
@@ -90,45 +94,59 @@ export function BatchesPage() {
           </Field>
           <div className="flex items-end">
             <button type="submit" className={primaryBtn} disabled={create.isPending}>
-              Issue batch
+              {create.isPending ? 'Creating…' : 'Create pack'}
             </button>
           </div>
         </form>
       </Card>
       <div className="space-y-3">
         {(batches.data?.data ?? []).map((batch) => (
-          <Card key={batch.id}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold">{batch.reference}</p>
-                <p className="text-sm text-ink-700">
-                  {batch.plan?.name} · {batch.quantity} cards
-                  {batch.site?.name ? ` · ${batch.site.name}` : ''}
-                </p>
-                <p className="mt-1 text-xs text-ink-700">
-                  Issued {batch.issued_count ?? '—'} · unused {batch.unused_count ?? '—'} · printed {batch.print_count}×
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={batch.status === 'ready' ? 'green' : batch.status === 'disabled' ? 'red' : 'amber'}>
-                  {batch.status_label}
-                </Badge>
-                {batch.is_printable && (
-                  <button type="button" className={primaryBtn} onClick={() => void print(batch)}>
-                    Print
-                  </button>
-                )}
-                {batch.status !== 'disabled' && (
-                  <button type="button" className={secondaryBtn} onClick={() => disable.mutate(batch.id)}>
-                    Withdraw
-                  </button>
-                )}
-              </div>
-            </div>
-          </Card>
+          <BatchRow key={batch.id} batch={batch} onPrint={() => void print(batch)} onWithdraw={() => disable.mutate(batch.id)} />
         ))}
       </div>
-      {!batches.data?.data.length && <Empty>{batches.isLoading ? 'Loading batches…' : 'No batches yet.'}</Empty>}
+      {!batches.data?.data.length && <Empty>{batches.isLoading ? 'Loading print packs…' : 'No print packs yet.'}</Empty>}
     </div>
+  );
+}
+
+function BatchRow({ batch, onPrint, onWithdraw }: { batch: Batch; onPrint: () => void; onWithdraw: () => void }) {
+  const generating = batch.status === 'generating';
+  const unused = batch.unused_count;
+  const issued = batch.issued_count;
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-ink-700 uppercase">Print pack</p>
+          <p className="font-semibold text-ink-900">{batch.reference}</p>
+          <p className="mt-1 text-sm text-ink-800">
+            {batch.quantity} {batch.plan?.name ?? 'bundle'} voucher{batch.quantity === 1 ? '' : 's'}
+            {batch.site?.name ? ` · ${batch.site.name}` : ''}
+            {batch.assigned_agent?.name ? ` · ${batch.assigned_agent.name}` : ''}
+          </p>
+          <p className="mt-1 text-xs text-ink-700">
+            {generating
+              ? `Creating ${batch.quantity} voucher codes…`
+              : `${issued ?? batch.quantity} codes in pack · ${unused ?? '—'} still unused · printed ${batch.print_count}×`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={batch.status === 'ready' ? 'green' : batch.status === 'disabled' ? 'red' : 'amber'}>
+            {batch.status_label}
+          </Badge>
+          {batch.is_printable && (
+            <button type="button" className={primaryBtn} onClick={onPrint}>
+              Print voucher cards
+            </button>
+          )}
+          {batch.status !== 'disabled' && (
+            <button type="button" className={secondaryBtn} onClick={onWithdraw}>
+              Withdraw
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
