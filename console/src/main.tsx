@@ -21,10 +21,12 @@ const queryClient = new QueryClient({
   },
 });
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
 createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={basename === '/' ? undefined : basename}>
         <AuthProvider>
           <App />
         </AuthProvider>

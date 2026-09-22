@@ -150,8 +150,9 @@ async function parse<T>(res: Response): Promise<T> {
 
   if (res.status === 401) {
     setToken(null);
-    if (!window.location.pathname.startsWith('/login')) {
-      window.location.assign('/login');
+    const loginPath = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/login`;
+    if (!window.location.pathname.startsWith(loginPath)) {
+      window.location.assign(loginPath);
     }
   }
 

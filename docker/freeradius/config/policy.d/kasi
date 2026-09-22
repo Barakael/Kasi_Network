@@ -5,7 +5,7 @@
 # the request arrived on, so the same physical device on two operators' networks
 # does not collide.
 
-policy rewrite_mac_username {
+rewrite_mac_username {
 	if (User-Name =~ /^([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})[-:.]?([0-9a-fA-F]{2})$/) {
 		update request {
 			&Tmp-String-0 := "%{tolower:%{1}:%{2}:%{3}:%{4}:%{5}:%{6}}"

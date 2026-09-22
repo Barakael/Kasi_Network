@@ -271,13 +271,13 @@ export function App() {
         <section className="portal-block">
           <div>
             <h2 className="portal-panel-title">Ungana</h2>
-            <p className="mt-1 text-sm text-leaf-700">Chagua njia moja. Paketi, voucher, au kifaa kingine.</p>
+            <p className="mt-1 text-sm text-leaf-700">Chagua njia moja. Bando, voucher, au kifaa kingine.</p>
           </div>
           <div className="portal-choices">
             <button type="button" className="portal-choice" onClick={() => setView('packages')}>
               <span>
                 <span className="portal-choice-kicker">Nunua</span>
-                <span className="portal-choice-title block">Paketi</span>
+                <span className="portal-choice-title block">Bando</span>
                 <span className="portal-choice-copy block">Tazama bei na chagua muda wa intaneti.</span>
               </span>
               <span className="portal-choice-go" aria-hidden>
@@ -286,9 +286,9 @@ export function App() {
             </button>
             <button type="button" className="portal-choice" onClick={() => setView('voucher')}>
               <span>
-                <span className="portal-choice-kicker">Nina kadi</span>
+                <span className="portal-choice-kicker">Nina voucher</span>
                 <span className="portal-choice-title block">Voucher</span>
-                <span className="portal-choice-copy block">Andika namba au scan QR ili uungane.</span>
+                <span className="portal-choice-copy block">Andika namba au scan QR ili uunganishwe.</span>
               </span>
               <span className="portal-choice-go" aria-hidden>
                 →

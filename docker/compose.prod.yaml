@@ -1,0 +1,136 @@
+name: kasi-network
+
+# Production stack for net.wayda.co.tz. MySQL and Redis stay on the docker
+# network. Only the API (loopback) and FreeRADIUS (UDP 1812/1813) are published.
+
+services:
+  mysql:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=256M
+      - --innodb-flush-log-at-trx-commit=2
+      - --max-connections=200
+      - --ssl-ca=/certs/ca.pem
+      - --ssl-cert=/certs/server-cert.pem
+      - --ssl-key=/certs/server-key.pem
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kasi}
+      KASI_RADIUS_DB_PASSWORD: ${RADIUS_DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./mysql/certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  freeradius:
+    build:
+      context: ./freeradius
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      RADIUS_DB_HOST: mysql
+      RADIUS_DB_PORT: "3306"
+      RADIUS_DB_NAME: ${MYSQL_DATABASE:-kasi}
+      RADIUS_DB_USER: radius
+      RADIUS_DB_PASSWORD: ${RADIUS_DB_PASSWORD}
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    volumes:
+      - ./freeradius/config:/opt/kasi-raddb:ro
+      - ./mysql/certs/ca.pem:/mysql-certs/ca.pem:ro
+    command: ["radiusd", "-f", "-l", "stdout"]
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../api/.env
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE:-kasi}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_CLIENT: predis
+      APP_URL: ${APP_URL:-https://net.wayda.co.tz}
+      PORTAL_URL: ${PORTAL_URL:-https://net.wayda.co.tz}
+      CONSOLE_URL: ${CONSOLE_URL:-https://net.wayda.co.tz/console}
+    ports:
+      - "127.0.0.1:8020:8000"
+    volumes:
+      - ../api:/app
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+    restart: unless-stopped
+
+  queue:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      - api
+    env_file:
+      - ../api/.env
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE:-kasi}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_CLIENT: predis
+    volumes:
+      - ../api:/app
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      - api
+    env_file:
+      - ../api/.env
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: ${MYSQL_DATABASE:-kasi}
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_CLIENT: predis
+    volumes:
+      - ../api:/app
+    command: ["php", "artisan", "schedule:work"]
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:

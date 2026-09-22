@@ -8,9 +8,10 @@ RUN apk add --no-cache \
         git \
         libpng-dev \
         libzip-dev \
+        linux-headers \
         unzip \
     && docker-php-ext-configure gd --with-jpeg=no \
-    && docker-php-ext-install -j"$(nproc)" bcmath gd pcntl pdo_mysql zip \
+    && docker-php-ext-install -j"$(nproc)" bcmath gd pcntl pdo_mysql sockets zip \
     && rm -rf /var/cache/apk/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
