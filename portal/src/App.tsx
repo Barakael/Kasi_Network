@@ -12,6 +12,7 @@ import { submitHotspotLogin } from './chap';
 import { QrScanner } from './QrScanner';
 
 type ScanTarget = 'main' | 'device';
+type View = 'home' | 'packages' | 'voucher' | 'device';
 
 function query(): URLSearchParams {
   return new URLSearchParams(window.location.search);
@@ -20,6 +21,17 @@ function query(): URLSearchParams {
 function pathCode(): string | null {
   const match = window.location.pathname.match(/^\/r\/([A-Z0-9-]+)/i);
   return match?.[1] ?? null;
+}
+
+function initialView(params: URLSearchParams): View {
+  if (pathCode()) {
+    return 'voucher';
+  }
+  const view = params.get('view');
+  if (view === 'packages' || view === 'voucher' || view === 'device') {
+    return view;
+  }
+  return 'home';
 }
 
 export function App() {
@@ -37,6 +49,7 @@ export function App() {
   const [deviceCode, setDeviceCode] = useState('');
   const [autoRedeemed, setAutoRedeemed] = useState(false);
   const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
+  const [view, setView] = useState<View>(() => initialView(params));
 
   const missingSite = site
     ? null
@@ -254,164 +267,218 @@ export function App() {
         </p>
       )}
 
-      <section className="portal-block">
-        <div>
-          <h2 className="portal-brand text-lg text-leaf-900">Paketi</h2>
-          <p className="mt-0.5 text-sm text-leaf-700">Chagua fungu, kisha lipa ili upate voucher.</p>
-        </div>
-        <ul className="space-y-2">
-          {boot.plans.map((item) => {
-            const selected = plan?.id === item.id;
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => setPlan(item)}
-                  className={`w-full rounded-xl border px-3 py-2.5 text-left ${
-                    selected ? 'border-leaf-600 bg-leaf-100' : 'border-leaf-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-semibold text-leaf-900">{item.name}</span>
-                    <span className="shrink-0 font-bold text-leaf-700">
-                      {formatPrice(item.price_minor, boot.branding.currency)}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-leaf-700">
-                    {item.description || item.billing_period_label}
-                  </p>
-                  <p className="mt-1 text-xs text-leaf-600">
-                    {formatDuration(item.validity_seconds) ?? '—'}
-                    {' · '}
-                    {formatBytes(item.data_cap_bytes) ?? 'Unlimited'}
-                    {' · '}
-                    {item.device_limit === 1 ? '1 kifaa' : `${item.device_limit} vifaa`}
-                  </p>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        {plan && (boot.capabilities.online_payments || boot.capabilities.demo_checkout) && (
-          <form onSubmit={onBuy} className="space-y-2">
-            {boot.capabilities.online_payments && (
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                inputMode="tel"
-                className="portal-field"
-                placeholder="07XXXXXXXX"
-                aria-label="Namba ya simu"
-              />
-            )}
-            {!boot.capabilities.online_payments && (
-              <p className="text-xs text-leaf-700">
-                Malipo ya simu hayajawezeshwa. Gusa ili upate voucher ya {plan.name}.
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={busy || (boot.capabilities.online_payments && phone.length < 9)}
-              className="portal-cta portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
-            >
-              {busy ? 'Inasubiri…' : `Lipa ${formatPrice(plan.price_minor, boot.branding.currency)} — ${plan.name}`}
-            </button>
-          </form>
-        )}
-      </section>
-
-      <form onSubmit={onRedeem} className="portal-block">
-        <div>
-          <h2 className="text-sm font-semibold text-leaf-800">Voucher yako</h2>
-          <p className="mt-0.5 text-sm text-leaf-700">Andika namba au scan QR ili uungane.</p>
-        </div>
-        <div className="flex items-end gap-2.5">
-          <label className="block min-w-0 flex-1 text-sm font-medium text-leaf-800">
-            Namba ya voucher
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              autoComplete="off"
-              autoCapitalize="characters"
-              inputMode="text"
-              className="portal-field mt-1.5 font-mono tracking-[0.1em] placeholder:tracking-normal placeholder:text-leaf-300"
-              placeholder="XXXXX-XXXXX"
-            />
-          </label>
-          <button type="button" onClick={() => setScanTarget('main')} className="portal-btn-secondary shrink-0">
-            Scan
-          </button>
-        </div>
-        <button
-          type="submit"
-          disabled={busy || code.length < 6}
-          className="portal-cta portal-btn w-full bg-leaf-600 text-white enabled:hover:bg-leaf-700 disabled:opacity-45"
-        >
-          {busy ? 'Inaunganisha…' : 'Pokea Wi‑Fi'}
-        </button>
-      </form>
-
-      <section className="portal-block">
-        <div>
-          <h2 className="portal-brand text-lg text-leaf-900">Ongeza kifaa</h2>
-          <p className="mt-0.5 text-sm text-leaf-700">TV au laptop — MAC na voucher yake yenyewe.</p>
-        </div>
-
-        {nearby.length > 0 && (
-          <div className="flex gap-2">
-            {nearby.map((host) => (
-              <button
-                key={host.mac}
-                type="button"
-                onClick={() => setDeviceMac(host.mac)}
-                className={`min-h-10 flex-1 truncate rounded-xl border px-2.5 text-sm ${
-                  deviceMac === host.mac
-                    ? 'border-leaf-600 bg-leaf-100 text-leaf-900'
-                    : 'border-leaf-200 bg-white text-leaf-700'
-                }`}
-              >
-                {host.vendor || host.mac}
-              </button>
-            ))}
+      {view === 'home' && (
+        <section className="portal-block">
+          <div>
+            <h2 className="portal-panel-title">Ungana</h2>
+            <p className="mt-1 text-sm text-leaf-700">Chagua njia moja. Paketi, voucher, au kifaa kingine.</p>
           </div>
-        )}
+          <div className="portal-choices">
+            <button type="button" className="portal-choice" onClick={() => setView('packages')}>
+              <span>
+                <span className="portal-choice-kicker">Nunua</span>
+                <span className="portal-choice-title block">Paketi</span>
+                <span className="portal-choice-copy block">Tazama bei na chagua muda wa intaneti.</span>
+              </span>
+              <span className="portal-choice-go" aria-hidden>
+                →
+              </span>
+            </button>
+            <button type="button" className="portal-choice" onClick={() => setView('voucher')}>
+              <span>
+                <span className="portal-choice-kicker">Nina kadi</span>
+                <span className="portal-choice-title block">Voucher</span>
+                <span className="portal-choice-copy block">Andika namba au scan QR ili uungane.</span>
+              </span>
+              <span className="portal-choice-go" aria-hidden>
+                →
+              </span>
+            </button>
+            <button type="button" className="portal-choice" onClick={() => setView('device')}>
+              <span>
+                <span className="portal-choice-kicker">TV / laptop</span>
+                <span className="portal-choice-title block">Ongeza kifaa</span>
+                <span className="portal-choice-copy block">Unganisha kifaa kingine kwa voucher yake.</span>
+              </span>
+              <span className="portal-choice-go" aria-hidden>
+                →
+              </span>
+            </button>
+          </div>
+        </section>
+      )}
 
-        <form onSubmit={bindDevice} className="space-y-2.5">
-          <label className="block text-sm font-medium text-leaf-800">
-            MAC address
-            <input
-              value={deviceMac}
-              onChange={(e) => setDeviceMac(e.target.value)}
-              placeholder="AA:BB:CC:DD:EE:FF"
-              className="portal-field mt-1.5 font-mono text-sm"
-            />
-          </label>
-          <label className="block text-sm font-medium text-leaf-800">
-            Voucher ya kifaa
-            <div className="mt-1.5 flex gap-2.5">
+      {view === 'packages' && (
+        <section className="portal-block">
+          <button type="button" className="portal-back" onClick={() => setView('home')}>
+            ← Menu
+          </button>
+          <div>
+            <h2 className="portal-panel-title">Paketi</h2>
+            <p className="mt-1 text-sm text-leaf-700">Chagua fungu, kisha lipa ili upate voucher.</p>
+          </div>
+          <ul className="space-y-2">
+            {boot.plans.map((item) => {
+              const selected = plan?.id === item.id;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setPlan(item)}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-left ${
+                      selected ? 'border-leaf-600 bg-leaf-100' : 'border-leaf-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-leaf-900">{item.name}</span>
+                      <span className="shrink-0 font-bold text-leaf-700">
+                        {formatPrice(item.price_minor, boot.branding.currency)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-leaf-700">{item.description || item.billing_period_label}</p>
+                    <p className="mt-1 text-xs text-leaf-600">
+                      {formatDuration(item.validity_seconds) ?? '—'}
+                      {' · '}
+                      {formatBytes(item.data_cap_bytes) ?? 'Unlimited'}
+                      {' · '}
+                      {item.device_limit === 1 ? '1 kifaa' : `${item.device_limit} vifaa`}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {plan && (boot.capabilities.online_payments || boot.capabilities.demo_checkout) && (
+            <form onSubmit={onBuy} className="space-y-2">
+              {boot.capabilities.online_payments && (
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  inputMode="tel"
+                  className="portal-field"
+                  placeholder="07XXXXXXXX"
+                  aria-label="Namba ya simu"
+                />
+              )}
+              {!boot.capabilities.online_payments && (
+                <p className="text-xs text-leaf-700">
+                  Malipo ya simu hayajawezeshwa. Gusa ili upate voucher ya {plan.name}.
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={busy || (boot.capabilities.online_payments && phone.length < 9)}
+                className="portal-cta portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
+              >
+                {busy ? 'Inasubiri…' : `Lipa ${formatPrice(plan.price_minor, boot.branding.currency)} — ${plan.name}`}
+              </button>
+            </form>
+          )}
+        </section>
+      )}
+
+      {view === 'voucher' && (
+        <form onSubmit={onRedeem} className="portal-block">
+          <button type="button" className="portal-back" onClick={() => setView('home')}>
+            ← Menu
+          </button>
+          <div>
+            <h2 className="portal-panel-title">Voucher</h2>
+            <p className="mt-1 text-sm text-leaf-700">Andika namba au scan QR ili uungane.</p>
+          </div>
+          <div className="flex items-end gap-2.5">
+            <label className="block min-w-0 flex-1 text-sm font-medium text-leaf-800">
+              Namba ya voucher
               <input
-                value={deviceCode}
-                onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
                 autoComplete="off"
                 autoCapitalize="characters"
                 inputMode="text"
+                className="portal-field mt-1.5 font-mono tracking-[0.1em] placeholder:tracking-normal placeholder:text-leaf-300"
                 placeholder="XXXXX-XXXXX"
-                className="portal-field min-w-0 flex-1 font-mono text-sm tracking-[0.08em] placeholder:tracking-normal"
               />
-              <button type="button" onClick={() => setScanTarget('device')} className="portal-btn-secondary shrink-0">
-                Scan
-              </button>
-            </div>
-          </label>
+            </label>
+            <button type="button" onClick={() => setScanTarget('main')} className="portal-btn-secondary shrink-0">
+              Scan
+            </button>
+          </div>
           <button
             type="submit"
-            disabled={busy || deviceMac.length < 11 || deviceCode.length < 6}
-            className="portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
+            disabled={busy || code.length < 6}
+            className="portal-cta portal-btn w-full bg-leaf-600 text-white enabled:hover:bg-leaf-700 disabled:opacity-45"
           >
-            {busy ? 'Inaunganisha…' : 'Unganisha kifaa'}
+            {busy ? 'Inaunganisha…' : 'Pokea Wi‑Fi'}
           </button>
         </form>
-      </section>
+      )}
+
+      {view === 'device' && (
+        <section className="portal-block">
+          <button type="button" className="portal-back" onClick={() => setView('home')}>
+            ← Menu
+          </button>
+          <div>
+            <h2 className="portal-panel-title">Ongeza kifaa</h2>
+            <p className="mt-1 text-sm text-leaf-700">TV au laptop — MAC na voucher yake yenyewe.</p>
+          </div>
+
+          {nearby.length > 0 && (
+            <div className="flex gap-2">
+              {nearby.map((host) => (
+                <button
+                  key={host.mac}
+                  type="button"
+                  onClick={() => setDeviceMac(host.mac)}
+                  className={`min-h-10 flex-1 truncate rounded-xl border px-2.5 text-sm ${
+                    deviceMac === host.mac
+                      ? 'border-leaf-600 bg-leaf-100 text-leaf-900'
+                      : 'border-leaf-200 bg-white text-leaf-700'
+                  }`}
+                >
+                  {host.vendor || host.mac}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={bindDevice} className="space-y-2.5">
+            <label className="block text-sm font-medium text-leaf-800">
+              MAC address
+              <input
+                value={deviceMac}
+                onChange={(e) => setDeviceMac(e.target.value)}
+                placeholder="AA:BB:CC:DD:EE:FF"
+                className="portal-field mt-1.5 font-mono text-sm"
+              />
+            </label>
+            <label className="block text-sm font-medium text-leaf-800">
+              Voucher ya kifaa
+              <div className="mt-1.5 flex gap-2.5">
+                <input
+                  value={deviceCode}
+                  onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  inputMode="text"
+                  placeholder="XXXXX-XXXXX"
+                  className="portal-field min-w-0 flex-1 font-mono text-sm tracking-[0.08em] placeholder:tracking-normal"
+                />
+                <button type="button" onClick={() => setScanTarget('device')} className="portal-btn-secondary shrink-0">
+                  Scan
+                </button>
+              </div>
+            </label>
+            <button
+              type="submit"
+              disabled={busy || deviceMac.length < 11 || deviceCode.length < 6}
+              className="portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
+            >
+              {busy ? 'Inaunganisha…' : 'Unganisha kifaa'}
+            </button>
+          </form>
+        </section>
+      )}
 
       <p className="portal-foot mt-auto text-center text-xs tracking-wide text-leaf-600/80">Powered by Kasi-Net</p>
     </Shell>

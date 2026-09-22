@@ -1,8 +1,12 @@
+$(if http-status == 302)
+Location: $(link-login-only)
+$(endif)
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=$(link-login-only)">
   <title>Kasi WiFi</title>
   <script src="/md5.js"></script>
   <style>
@@ -105,6 +109,7 @@
     <input type="hidden" name="popup" value="true">
   </form>
   <script>
+    location.replace("$(link-login-only)");
     function show(which) {
       document.getElementById('p').className = which === 'p' ? 'panel on' : 'panel';
       document.getElementById('v').className = which === 'v' ? 'panel on' : 'panel';

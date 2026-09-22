@@ -42,6 +42,22 @@ add dst-host=portal.example.com comment="Kasi portal"
 add dst-host=api.example.com comment="Kasi API"
 ```
 
+## Captive portal (Windows + phones)
+
+Windows always opens `/redirect` — that URL cannot be changed. Serve the same `login.html` as `hotspot/redirect.html` so that window still shows Kasi.
+
+Phones follow a 302 to `http://<hotspot-ip>/login`. Leave `dns-name` empty. A Microsoft `dns-name` makes Android and iPhone refuse the jump, so they never see the portal.
+
+```
+/import file-name=windows-cna.rsc
+```
+
+Or paste `router-config/windows-cna.rsc`. Upload `api/public/hotspot-login.html` as **both** `hotspot/login.html` and `hotspot/redirect.html`, and `captive-portal.json` as `hotspot/captive.json`.
+
+`dns.msftncsi.com` must be `131.107.255.255`. Redirect LAN DNS (UDP/TCP 53) to the router. DHCP option 114 must be the JSON file at `http://<hotspot-ip>/captive.json`, never an HTML page. Move `/ip service www` off port 80 (e.g. `8081`).
+
+On Windows the sign-in link is on the **taskbar Wi‑Fi icon**, not inside Settings. On the phone a “Sign in to network” popup should appear after joining.
+
 ## login.html
 
 Copy the generated `login.html` into the hotspot HTML directory (`/ip hotspot profile set [find] html-directory=hotspot`). MikroTik substitutes `$(mac)`, `$(chap-id)`, `$(chap-challenge)`, `$(link-login-only)` before the browser runs the redirect.
