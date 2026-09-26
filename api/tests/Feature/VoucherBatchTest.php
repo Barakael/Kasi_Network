@@ -196,7 +196,9 @@ class VoucherBatchTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.issued_count', 10)
             ->assertJsonPath('data.redeemed_count', 4)
-            ->assertJsonPath('data.unused_count', 6);
+            ->assertJsonPath('data.unused_count', 6)
+            ->assertJsonPath('data.printable_count', 6)
+            ->assertJsonPath('data.is_printable', true);
     }
 
     #[Test]
