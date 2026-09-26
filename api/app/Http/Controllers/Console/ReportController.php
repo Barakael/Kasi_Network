@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Domain\Billing\OrderStatus;
+use App\Domain\Billing\RevenueBook;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
@@ -13,21 +13,13 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ReportController
 {
-    public function revenue(Request $request): JsonResponse
+    public function revenue(Request $request, RevenueBook $book): JsonResponse
     {
         $from = $request->date('from') ?? now()->subDays(30)->startOfDay();
         $to = $request->date('to') ?? now()->endOfDay();
 
-        $rows = Order::query()
-            ->whereIn('status', [OrderStatus::Paid, OrderStatus::Fulfilled])
-            ->whereBetween('paid_at', [$from, $to])
-            ->selectRaw('DATE(paid_at) as day, COUNT(*) as orders, SUM(COALESCE(net_minor, amount_minor)) as total')
-            ->groupBy('day')
-            ->orderBy('day')
-            ->get();
-
         return response()->json([
-            'data' => $rows,
+            'data' => $book->seriesBetween($from, $to)->values(),
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
         ]);
