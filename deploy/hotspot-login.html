@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Connecting…</title>
+  <title>Kasi</title>
 </head>
 <body>
-  <p>Opening the login page…</p>
   <script>
+    var err = "$(error)";
     var params = new URLSearchParams({
       site: "kasi-demo-site-1",
+      view: "packages",
       mac: "$(mac)",
       ip: "$(ip)",
       link_login: "$(link-login-only)",
       link_orig: "$(link-orig)",
       chap_id: "$(chap-id)",
-      chap_challenge: "$(chap-challenge)",
-      error: "$(error)"
+      chap_challenge: "$(chap-challenge)"
     });
+    if (err && err.indexOf("$(") === -1) {
+      params.set("error", err);
+    }
     window.location.replace("https://net.wayda.co.tz/?" + params.toString());
   </script>
-  <noscript>
-    <a href="https://net.wayda.co.tz/?site=kasi-demo-site-1">Continue</a>
-  </noscript>
 </body>
 </html>
