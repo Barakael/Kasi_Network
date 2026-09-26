@@ -80,6 +80,13 @@ return [
     */
 
     'radius' => [
+        /*
+         * Address the MikroTik sends Access-Requests to. An IP, not the portal
+         * hostname: hotspot DNS is hijacked, so net.wayda.co.tz may not resolve
+         * to the RADIUS host from the router.
+         */
+        'public_host' => env('RADIUS_PUBLIC_HOST')
+            ?: (parse_url((string) env('APP_URL', ''), PHP_URL_HOST) ?: '127.0.0.1'),
         'coa_port' => (int) env('RADIUS_COA_PORT', 3799),
         'radclient_bin' => env('RADIUS_RADCLIENT_BIN', 'radclient'),
         'radclient_timeout' => (int) env('RADIUS_RADCLIENT_TIMEOUT', 5),
