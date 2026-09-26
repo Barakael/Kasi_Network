@@ -218,6 +218,18 @@ final readonly class RadiusProvisioner
     }
 
     /**
+     * Drops the MAC lock so a later authentication from a different device
+     * is not refused at RADIUS.
+     */
+    public function unbindCallingStation(string $username): void
+    {
+        DB::table('radcheck')
+            ->where('username', $username)
+            ->where('attribute', RadiusAttribute::CALLING_STATION_ID)
+            ->delete();
+    }
+
+    /**
      * Writes the wall-clock Expiration attribute when a voucher is first used.
      *
      * Matches the FreeRADIUS post-auth stamp so portal-first redemption (lab
