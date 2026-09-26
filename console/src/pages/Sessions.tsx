@@ -10,7 +10,14 @@ export function SessionsPage() {
   const [error, setError] = useState<string | null>(null);
   const disconnect = useMutation({
     mutationFn: api.disconnect,
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['sessions'] }),
+    onSuccess: (result) => {
+      void client.invalidateQueries({ queryKey: ['sessions'] });
+      if (result.disconnected) {
+        setError(null);
+        return;
+      }
+      setError('Kasi released the phone. On the MikroTik paste: /ip hotspot active remove [find]');
+    },
     onError: (err: Error) => setError(err.message),
   });
 
