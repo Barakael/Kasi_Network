@@ -6,6 +6,8 @@ build/
 
 # Internal MySQL TLS material (generated on the server, never commit)
 docker/mysql/certs/
+docker/freeradius/certs/
+docker/.env
 
 portal/node_modules/
 api/dump.rdb
