@@ -2,7 +2,9 @@ import { NavLink, Outlet, useNavigate } from 'react-router';
 import { isAgent, useAuth } from '../auth';
 import { secondaryBtn } from './ui';
 
-const operatorGroups = [
+type NavItem = readonly [to: string, label: string];
+
+const operatorGroups: { label: string; items: readonly NavItem[] }[] = [
   {
     label: 'Monitor',
     items: [
@@ -28,7 +30,7 @@ const operatorGroups = [
     label: 'Business',
     items: [['/reports', 'Reports']],
   },
-] as const;
+];
 
 const operatorLinks = operatorGroups.flatMap((group) => group.items);
 
