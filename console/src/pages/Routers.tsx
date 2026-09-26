@@ -10,7 +10,8 @@ export function RoutersPage() {
   const [error, setError] = useState<string | null>(null);
   const [snippet, setSnippet] = useState<{ name: string; rsc: string; login_html: string } | null>(null);
   const [siteForm, setSiteForm] = useState({ name: '', ssid: '', nas_identifier: '' });
-  const [nasForm, setNasForm] = useState({ site_id: '', name: '', nasname: '', shared_secret: '' });
+  const [nasForm, setNasForm] = useState({ site_id: '', name: '', nasname: '', api_host: '', shared_secret: '' });
+  const [nasnameEdits, setNasnameEdits] = useState<Record<number, string>>({});
 
   const createSite = useMutation({
     mutationFn: () => api.createSite(siteForm),
@@ -27,12 +28,19 @@ export function RoutersPage() {
         site_id: Number(nasForm.site_id),
         name: nasForm.name,
         nasname: nasForm.nasname,
+        api_host: nasForm.api_host || null,
         shared_secret: nasForm.shared_secret || null,
       }),
     onSuccess: () => {
-      setNasForm({ ...nasForm, name: '', nasname: '', shared_secret: '' });
+      setNasForm({ ...nasForm, name: '', nasname: '', api_host: '', shared_secret: '' });
       void client.invalidateQueries({ queryKey: ['nas'] });
     },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const updateNas = useMutation({
+    mutationFn: ({ id, nasname }: { id: number; nasname: string }) => api.updateNas(id, { nasname }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['nas'] }),
     onError: (err: Error) => setError(err.message),
   });
 
@@ -105,8 +113,22 @@ export function RoutersPage() {
             <Field label="Name">
               <input className={inputClass} value={nasForm.name} onChange={(e) => setNasForm({ ...nasForm, name: e.target.value })} required />
             </Field>
-            <Field label="Router IP">
-              <input className={inputClass} value={nasForm.nasname} onChange={(e) => setNasForm({ ...nasForm, nasname: e.target.value })} required />
+            <Field label="RADIUS source IP">
+              <input
+                className={inputClass}
+                value={nasForm.nasname}
+                onChange={(e) => setNasForm({ ...nasForm, nasname: e.target.value })}
+                placeholder="Public IP FreeRADIUS sees"
+                required
+              />
+            </Field>
+            <Field label="Hotspot LAN IP (optional)">
+              <input
+                className={inputClass}
+                value={nasForm.api_host}
+                onChange={(e) => setNasForm({ ...nasForm, api_host: e.target.value })}
+                placeholder="192.168.10.212"
+              />
             </Field>
             <Field label="Shared secret (blank to generate)">
               <input className={inputClass} value={nasForm.shared_secret} onChange={(e) => setNasForm({ ...nasForm, shared_secret: e.target.value })} />
@@ -120,12 +142,35 @@ export function RoutersPage() {
       <div className="mt-4 space-y-3">
         {(routers.data?.data ?? []).map((router) => (
           <Card key={router.id}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="font-semibold">{router.name}</p>
                 <p className="text-sm text-ink-700">
                   {router.nasname} · {router.site?.name}
                 </p>
+                <form
+                  className="mt-2 flex flex-wrap items-end gap-2"
+                  onSubmit={(event: FormEvent) => {
+                    event.preventDefault();
+                    const nasname = (nasnameEdits[router.id] ?? router.nasname).trim();
+                    if (!nasname || nasname === router.nasname) {
+                      return;
+                    }
+                    setError(null);
+                    updateNas.mutate({ id: router.id, nasname });
+                  }}
+                >
+                  <Field label="RADIUS source IP">
+                    <input
+                      className={inputClass}
+                      value={nasnameEdits[router.id] ?? router.nasname}
+                      onChange={(e) => setNasnameEdits({ ...nasnameEdits, [router.id]: e.target.value })}
+                    />
+                  </Field>
+                  <button type="submit" className={secondaryBtn} disabled={updateNas.isPending}>
+                    Save IP
+                  </button>
+                </form>
               </div>
               <div className="flex items-center gap-2">
                 <Badge tone={router.status === 'active' ? 'green' : 'slate'}>{router.status}</Badge>
