@@ -21,7 +21,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Live network" subtitle="Concurrent sessions and today’s take." />
+      <PageHeader title="Live network" subtitle="Used vouchers and who is online now." />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Online now" value={String(data?.concurrent_sessions ?? '—')} />
         <Stat label="Revenue today" value={data ? money(data.revenue_today_minor, currency) : '—'} />
