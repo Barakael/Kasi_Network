@@ -52,7 +52,8 @@ class PortalBootstrapTest extends TestCase
 
         $this->postJson('/api/portal/bootstrap', ['site' => 'site-abc'])
             ->assertOk()
-            ->assertJsonCount(1, 'plans');
+            ->assertJsonCount(1, 'plans')
+            ->assertJsonMissingPath('plans.0.rate_limit_down_kbps');
     }
 
     public function test_another_operators_bundles_are_never_listed(): void
