@@ -57,6 +57,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
 
             Route::get('nas-devices', [NasDeviceController::class, 'index'])->name('nas-devices.index');
             Route::post('nas-devices', [NasDeviceController::class, 'store'])->name('nas-devices.store');
+            Route::patch('nas-devices/{nas_device}', [NasDeviceController::class, 'update'])->name('nas-devices.update');
             Route::get('nas-devices/{nas_device}/snippet', [NasDeviceController::class, 'snippet'])->name('nas-devices.snippet');
 
             Route::get('reports/revenue', [ReportController::class, 'revenue'])->name('reports.revenue');
