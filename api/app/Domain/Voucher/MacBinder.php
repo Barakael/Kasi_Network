@@ -83,4 +83,14 @@ final readonly class MacBinder
     {
         $device->update(['status' => 'revoked']);
     }
+
+    /**
+     * Frees every device slot on a voucher so a different phone can redeem it.
+     */
+    public function release(Voucher $voucher): void
+    {
+        $voucher->devices()->where('status', 'active')->update(['status' => 'revoked']);
+        $voucher->update(['bound_mac' => null]);
+        $this->provisioner->unbindCallingStation($voucher->code);
+    }
 }
