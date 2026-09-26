@@ -25,7 +25,8 @@ class VoucherBatchResource extends JsonResource
             'quantity' => $this->quantity,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),
-            'is_printable' => $this->status->isPrintable(),
+            'is_printable' => $this->status->isPrintable() && $this->printableCount() > 0,
+            'printable_count' => $this->printableCount(),
             'notes' => $this->notes,
             'printed_at' => $this->printed_at?->toIso8601String(),
             'print_count' => $this->print_count,
@@ -67,6 +68,15 @@ class VoucherBatchResource extends JsonResource
     }
 
     /**
+     * Unused codes that have never been on a sheet. Print is hidden once this
+     * hits zero, otherwise the operator retries a 422 they already spent.
+     */
+    private function printableCount(): int
+    {
+        return (int) ($this->getAttributes()['printable_count'] ?? 0);
+    }
+
+    /**
      * The withCount clauses a batch listing needs to fill in its progress figures.
      *
      * Kept next to the resource that reads them so the two cannot drift apart.
@@ -78,6 +88,9 @@ class VoucherBatchResource extends JsonResource
         return [
             'vouchers',
             'vouchers as redeemed_count' => fn ($query) => $query->whereNot('status', VoucherStatus::Unused),
+            'vouchers as printable_count' => fn ($query) => $query
+                ->whereNull('printed_at')
+                ->where('status', VoucherStatus::Unused),
         ];
     }
 }
