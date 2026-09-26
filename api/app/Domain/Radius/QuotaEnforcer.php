@@ -26,9 +26,7 @@ final readonly class QuotaEnforcer
     public function enforce(): int
     {
         $acted = 0;
-        $devices = NasDevice::withoutTenantScope()
-            ->get()
-            ->keyBy('nasname');
+        $devices = NasDevice::indexedByRadiusIp();
 
         RadAcct::query()
             ->open()
