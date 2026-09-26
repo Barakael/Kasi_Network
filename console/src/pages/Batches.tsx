@@ -37,7 +37,7 @@ export function BatchesPage() {
   async function print(batch: Batch) {
     setError(null);
     try {
-      await openPrintSheet(batch.id);
+      await openPrintSheet(batch.id, batch.printable_count);
     } catch (err) {
       setError((err as Error).message);
     }
