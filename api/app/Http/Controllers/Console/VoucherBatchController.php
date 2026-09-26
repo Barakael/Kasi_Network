@@ -152,7 +152,9 @@ class VoucherBatchController
 
         $audit->record('voucher_batch.updated', $batch, ['changes' => array_keys($batch->getChanges())]);
 
-        return new VoucherBatchResource($batch->load(['plan', 'assignedAgent']));
+        return new VoucherBatchResource(
+            $batch->load(['plan', 'assignedAgent'])->loadCount(VoucherBatchResource::countsFor()),
+        );
     }
 
     /**
