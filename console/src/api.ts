@@ -58,6 +58,7 @@ export type Batch = {
   status_label: string;
   is_printable: boolean;
   print_count: number;
+  printable_count?: number;
   issued_count?: number;
   redeemed_count?: number;
   unused_count?: number;
@@ -85,6 +86,7 @@ export type NasDevice = {
   coa_port: number;
   status: string;
   has_api: boolean;
+  api_host?: string | null;
   site?: Site;
 };
 
@@ -204,7 +206,12 @@ export const api = {
   },
   dashboard: () => get<Dashboard>('/api/v1/dashboard'),
   sessions: () => get<{ data: Session[] }>('/api/v1/sessions'),
-  disconnect: (acctuniqueid: string) => send<{ disconnected: boolean }>('/api/v1/sessions/disconnect', 'POST', { acctuniqueid }),
+  disconnect: (acctuniqueid: string) =>
+    send<{ disconnected: boolean; session_closed?: boolean; mac_released?: boolean }>(
+      '/api/v1/sessions/disconnect',
+      'POST',
+      { acctuniqueid },
+    ),
   plans: () => get<{ data: Plan[] }>('/api/v1/plans'),
   createPlan: (payload: Record<string, unknown>) => send<{ data: Plan }>('/api/v1/plans', 'POST', payload),
   updatePlan: (id: number, payload: Record<string, unknown>) => send<{ data: Plan }>(`/api/v1/plans/${id}`, 'PATCH', payload),
@@ -217,6 +224,7 @@ export const api = {
   createSite: (payload: Record<string, unknown>) => send<{ data: Site }>('/api/v1/sites', 'POST', payload),
   nasDevices: () => get<{ data: NasDevice[] }>('/api/v1/nas-devices'),
   createNas: (payload: Record<string, unknown>) => send<{ data: NasDevice }>('/api/v1/nas-devices', 'POST', payload),
+  updateNas: (id: number, payload: Record<string, unknown>) => send<{ data: NasDevice }>(`/api/v1/nas-devices/${id}`, 'PATCH', payload),
   snippet: (id: number) => get<{ rsc: string; login_html: string }>(`/api/v1/nas-devices/${id}/snippet`),
   devices: () => get<Paginated<Device>>('/api/v1/devices'),
   revokeDevice: (id: number) => send<{ message: string }>(`/api/v1/devices/${id}`, 'DELETE'),
@@ -225,17 +233,28 @@ export const api = {
   orders: () => get<Paginated<Order>>('/api/v1/reports/orders'),
 };
 
-export async function openPrintSheet(batchId: number): Promise<void> {
-  const res = await fetch(`/api/print/voucher-batches/${batchId}?to=480`, {
+export async function openPrintSheet(batchId: number, remaining?: number): Promise<void> {
+  const params = remaining && remaining > 0 ? `?to=${remaining}` : '';
+  const res = await fetch(`/api/print/voucher-batches/${batchId}${params}`, {
     headers: {
-      Accept: 'text/html',
+      Accept: 'application/json, text/html',
       ...(token() ? { Authorization: `Bearer ${token()}` } : {}),
     },
   });
 
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
-    throw new Error(body.message || body.errors?.batch?.[0] || 'Could not open the print sheet.');
+    const contentType = res.headers.get('content-type') ?? '';
+    let message = 'Could not open the print sheet.';
+    if (contentType.includes('json')) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string; errors?: Record<string, string[]> };
+      message = body.message || body.errors?.batch?.[0] || message;
+    } else {
+      const text = await res.text().catch(() => '');
+      if (text.includes('no unprinted')) {
+        message = 'There are no unprinted vouchers left in this batch. Each code can only be printed once.';
+      }
+    }
+    throw new Error(message);
   }
 
   const html = await res.text();
