@@ -28,15 +28,16 @@ class PlanResource extends JsonResource
             'duration_seconds' => $this->duration_seconds,
             'data_cap_bytes' => $this->data_cap_bytes,
             'price_minor' => $this->price_minor,
-            'rate_limit_down_kbps' => $this->rate_limit_down_kbps,
-            'rate_limit_up_kbps' => $this->rate_limit_up_kbps,
             'device_limit' => $this->device_limit,
-            'on_quota_exhausted' => $this->on_quota_exhausted->value,
-            'throttle_down_kbps' => $this->throttle_down_kbps,
-            'throttle_up_kbps' => $this->throttle_up_kbps,
 
             // Console-only fields; the portal has no use for them and should not
-            // be shown inactive bundles at all.
+            // be shown inactive bundles at all. Rate limits stay off the portal
+            // so a silent throttle is not advertised to customers.
+            'rate_limit_down_kbps' => $this->when($request->user() !== null, $this->rate_limit_down_kbps),
+            'rate_limit_up_kbps' => $this->when($request->user() !== null, $this->rate_limit_up_kbps),
+            'on_quota_exhausted' => $this->when($request->user() !== null, $this->on_quota_exhausted->value),
+            'throttle_down_kbps' => $this->when($request->user() !== null, $this->throttle_down_kbps),
+            'throttle_up_kbps' => $this->when($request->user() !== null, $this->throttle_up_kbps),
             'shelf_life_days' => $this->when($request->user() !== null, $this->shelf_life_days),
             'is_active' => $this->when($request->user() !== null, $this->is_active),
             'is_sold_online' => $this->when($request->user() !== null, $this->is_sold_online),
