@@ -7,6 +7,18 @@
     <meta name="color-scheme" content="light" />
     <meta name="robots" content="noindex" />
     <title>Kasi Network Console</title>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (reg) {
+            var path = new URL(reg.scope).pathname;
+            if (path === '/' || path === '') {
+              void reg.unregister();
+            }
+          });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
