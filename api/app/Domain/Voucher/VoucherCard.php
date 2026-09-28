@@ -30,6 +30,8 @@ final readonly class VoucherCard
         public string $terms,
         public ?string $ssid,
         public ?string $expiryNote,
+        public string $operatorName,
+        public ?string $logoDataUri,
     ) {}
 
     public static function for(Voucher $voucher, Tenant $tenant, ?Site $site = null): self
@@ -42,8 +44,10 @@ final readonly class VoucherCard
             qrSvg: self::qrSvg(self::qrPayload($code)),
             planName: $voucher->plan->name,
             terms: self::terms($voucher),
-            ssid: $site?->ssid ?? $tenant->name,
+            ssid: $site?->ssid ?? $tenant->portal_name ?? $tenant->name,
             expiryNote: self::expiryNote($voucher),
+            operatorName: $tenant->portal_name ?? $tenant->name,
+            logoDataUri: $tenant->logoDataUri(),
         );
     }
 
