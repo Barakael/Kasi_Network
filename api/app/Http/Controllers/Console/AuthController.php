@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Domain\Auth\Totp;
 use App\Domain\Tenancy\AuditLogger;
 use App\Http\Requests\Console\LoginRequest;
 use App\Http\Resources\UserResource;
@@ -41,6 +42,25 @@ class AuthController
             throw ValidationException::withMessages([
                 'email' => 'Those credentials do not match our records.',
             ]);
+        }
+
+        if ($user->hasTwoFactor()) {
+            $code = $request->string('two_factor_code')->value();
+
+            if ($code === '') {
+                return response()->json([
+                    'requires_two_factor' => true,
+                    'message' => 'Enter the authenticator code.',
+                ], 403);
+            }
+
+            if (! Totp::verify($user->two_factor_secret, $code)) {
+                RateLimiter::hit($this->throttleKey($request));
+
+                throw ValidationException::withMessages([
+                    'two_factor_code' => 'That authenticator code is not valid.',
+                ]);
+            }
         }
 
         RateLimiter::clear($this->throttleKey($request));
@@ -91,7 +111,9 @@ class AuthController
      */
     private function abilitiesFor(User $user): array
     {
-        return $user->isAgent() ? ['vouchers:print'] : ['*'];
+        return $user->isAgent()
+            ? ['vouchers:print', 'desk']
+            : ['*'];
     }
 
     private function ensureNotRateLimited(LoginRequest $request): void
