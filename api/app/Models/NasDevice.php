@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -93,6 +94,38 @@ class NasDevice extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function lastRadiusAt(): ?Carbon
+    {
+        if ($this->last_seen_at instanceof Carbon) {
+            return $this->last_seen_at;
+        }
+
+        $ips = array_values(array_filter([$this->nasname, $this->api_host]));
+
+        if ($ips === []) {
+            return null;
+        }
+
+        $value = RadAcct::query()
+            ->whereIn('nasipaddress', $ips)
+            ->max('acctupdatetime');
+
+        if ($value === null) {
+            $value = RadAcct::query()
+                ->whereIn('nasipaddress', $ips)
+                ->max('acctstarttime');
+        }
+
+        return $value === null ? null : Carbon::parse($value);
+    }
+
+    public function isQuiet(int $minutes = 15): bool
+    {
+        $last = $this->lastRadiusAt();
+
+        return $last === null || $last->lt(now()->subMinutes($minutes));
     }
 
     /**
