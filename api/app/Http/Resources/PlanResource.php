@@ -29,6 +29,10 @@ class PlanResource extends JsonResource
             'data_cap_bytes' => $this->data_cap_bytes,
             'price_minor' => $this->price_minor,
             'device_limit' => $this->device_limit,
+            'offer_label' => $this->offer_label,
+            'offer_ends_at' => $this->offer_ends_at?->toIso8601String(),
+            'has_active_offer' => $this->hasActiveOffer(),
+            'default_price_minor' => $this->when($request->user() !== null, $this->default_price_minor),
 
             // Console-only fields; the portal has no use for them and should not
             // be shown inactive bundles at all. Rate limits stay off the portal
