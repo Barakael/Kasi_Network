@@ -210,8 +210,13 @@
         @foreach ($cards as $card)
             <div class="card">
                 <div class="card__header">
-                    <div class="card__brand">{{ $card->ssid }}</div>
-                    <div class="card__plan">{{ $card->planName }}</div>
+                    <div class="card__brand">
+                        @if ($card->logoDataUri)
+                            <img src="{{ $card->logoDataUri }}" alt="" style="height: 8mm; max-width: 22mm; object-fit: contain; vertical-align: middle;">
+                        @endif
+                        {{ $card->operatorName }}
+                    </div>
+                    <div class="card__plan">{{ $card->planName }}@if ($card->ssid) · {{ $card->ssid }}@endif</div>
                 </div>
 
                 <div class="card__body">
