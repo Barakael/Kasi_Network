@@ -19,4 +19,20 @@ abstract class TestCase extends BaseTestCase
     {
         app(CurrentTenant::class)->set($tenant);
     }
+
+    /**
+     * @param  array<string, string>  $extra
+     */
+    protected function identifiedPortalToken(string $nasIdentifier, string $phone = '0629288966', array $extra = []): string
+    {
+        $response = $this->postJson('/api/portal/bootstrap', [
+            'site' => $nasIdentifier,
+            'phone' => $phone,
+            ...$extra,
+        ]);
+
+        $response->assertOk()->assertJsonPath('needs_phone', false);
+
+        return $response->json('token');
+    }
 }
