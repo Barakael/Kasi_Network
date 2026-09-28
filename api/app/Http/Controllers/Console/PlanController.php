@@ -13,6 +13,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 
 /**
  * Bundle management.
@@ -74,6 +75,37 @@ class PlanController
         $audit->record('plan.updated', $plan, ['changes' => array_keys($plan->getChanges())]);
 
         return new PlanResource($plan->refresh());
+    }
+
+    public function offer(Request $request, Plan $plan, AuditLogger $audit): PlanResource
+    {
+        $this->authorize('update', $plan);
+
+        $validated = $request->validate([
+            'price_minor' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'offer_label' => ['required', 'string', 'max:80'],
+            'offer_ends_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $plan->applyOffer(
+            $validated['price_minor'],
+            $validated['offer_label'],
+            Carbon::parse($validated['offer_ends_at']),
+        );
+
+        $audit->record('plan.offer', $plan, ['label' => $validated['offer_label']]);
+
+        return new PlanResource($plan->fresh());
+    }
+
+    public function restorePrice(Request $request, Plan $plan, AuditLogger $audit): PlanResource
+    {
+        $this->authorize('update', $plan);
+
+        $plan->restoreDefaultPrice();
+        $audit->record('plan.restore_price', $plan);
+
+        return new PlanResource($plan->fresh());
     }
 
     /**
