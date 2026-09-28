@@ -29,6 +29,8 @@ class NasDeviceResource extends JsonResource
             'api_port' => $this->api_port,
             'model' => $this->model,
             'routeros_version' => $this->routeros_version,
+            'last_radius_at' => $this->lastRadiusAt()?->toIso8601String(),
+            'router_quiet' => $this->isQuiet(),
             'site' => new SiteResource($this->whenLoaded('site')),
         ];
     }
