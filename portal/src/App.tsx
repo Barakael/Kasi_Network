@@ -7,7 +7,9 @@ import {
 } from './api';
 import { submitHotspotLogin } from './chap';
 
-type View = 'packages' | 'connect';
+type View = 'phone' | 'packages' | 'connect';
+
+const PHONE_KEY = 'kasi.portal.phone';
 
 function query(): URLSearchParams {
   return new URLSearchParams(window.location.search);
@@ -32,7 +34,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState(pathCode() ?? '');
   const [busy, setBusy] = useState(false);
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(() => localStorage.getItem(PHONE_KEY) ?? '');
   const [plan, setPlan] = useState<Plan | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [deviceMac, setDeviceMac] = useState('');
@@ -58,17 +60,22 @@ export function App() {
       return;
     }
 
+    const saved = localStorage.getItem(PHONE_KEY) ?? '';
+
     portalApi
       .bootstrap({
         site,
         mac: params.get('mac') ?? '',
         ip: params.get('ip') ?? '',
         link_login: params.get('link_login') ?? '',
+        phone: saved,
       })
       .then((data) => {
         setBoot(data);
         document.title = data.branding.operator;
-        if (data.plans[0]) {
+        if (data.needs_phone) {
+          setView('phone');
+        } else if (data.plans[0]) {
           setPlan(data.plans[0]);
         }
       })
@@ -110,12 +117,34 @@ export function App() {
 
   useEffect(() => {
     const fromQr = pathCode();
-    if (!boot || !fromQr || autoRedeemed || busy) {
+    if (!boot || boot.needs_phone || !fromQr || autoRedeemed || busy) {
       return;
     }
     setAutoRedeemed(true);
     void redeemCode(fromQr);
   }, [boot, autoRedeemed, busy]);
+
+  async function onIdentify(event: FormEvent) {
+    event.preventDefault();
+    if (!boot) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await portalApi.identify(boot.token, phone);
+      localStorage.setItem(PHONE_KEY, phone);
+      setBoot(next);
+      setView('packages');
+      if (next.plans[0]) {
+        setPlan(next.plans[0]);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onRedeem(event: FormEvent) {
     event.preventDefault();
@@ -133,8 +162,10 @@ export function App() {
       if (boot.capabilities.online_payments) {
         setStatus('Angalia simu, thibitisha malipo…');
         const created = await portalApi.createOrder(boot.token, plan.id, phone);
-        for (let i = 0; i < 45; i++) {
-          await new Promise((r) => setTimeout(r, 2000));
+        for (let i = 0; i < 60; i++) {
+          if (i > 0) {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
           const current = await portalApi.order(boot.token, created.data.uuid);
           if (current.data.code) {
             loginWith(current.data.code);
@@ -218,6 +249,9 @@ export function App() {
     <Shell
       hero={
         <>
+          {boot.branding.logo_url && (
+            <img src={boot.branding.logo_url} alt="" className="mb-2 h-10 w-auto object-contain" />
+          )}
           <p className="portal-kicker">Kasi-Net</p>
           <h1 className="portal-brand mt-1 text-[2.05rem] leading-none">
             {boot.branding.operator || 'Karibu mtandaoni'}
@@ -241,6 +275,32 @@ export function App() {
         >
           {error || status}
         </p>
+      )}
+
+      {boot.campaign && (
+        <p className="shrink-0 rounded-xl bg-leaf-100 px-3 py-2 text-center text-sm text-leaf-800">
+          {boot.campaign.title}
+          {boot.campaign.body ? ` — ${boot.campaign.body}` : ''}
+        </p>
+      )}
+
+      {view === 'phone' && (
+        <form onSubmit={(e) => void onIdentify(e)} className="portal-fit space-y-3">
+          <h2 className="portal-panel-title">Namba ya simu</h2>
+          <p className="text-sm text-leaf-800">Lazima kabla ya vifurushi, Lipia au vocha.</p>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            inputMode="tel"
+            className="portal-field"
+            placeholder="07XXXXXXXX"
+            aria-label="Namba ya simu"
+            required
+          />
+          <button type="submit" disabled={busy || phone.length < 9} className="portal-btn w-full bg-leaf-600 text-white disabled:opacity-45">
+            {busy ? 'Subiri…' : 'Endelea'}
+          </button>
+        </form>
       )}
 
       {view === 'packages' && (
@@ -286,6 +346,19 @@ export function App() {
                 {busy ? 'Subiri…' : `Lipia ${formatPrice(plan.price_minor, boot.branding.currency)}`}
               </button>
             </form>
+          )}
+
+          {boot.unused_voucher && (
+            <button
+              type="button"
+              className="portal-btn w-full bg-leaf-700 text-white"
+              onClick={() => {
+                setCode(boot.unused_voucher?.display_code ?? '');
+                void redeemCode(boot.unused_voucher?.display_code ?? '');
+              }}
+            >
+              Tumia vocha yangu
+            </button>
           )}
 
           <button
