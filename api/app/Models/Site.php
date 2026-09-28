@@ -8,6 +8,7 @@ use App\Domain\Tenancy\BelongsToTenant;
 use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -37,6 +38,14 @@ class Site extends Model
         'status',
         'address',
     ];
+
+    /**
+     * @return BelongsToMany<User, $this>
+     */
+    public function agents(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'agent_site')->withTimestamps();
+    }
 
     /**
      * @return HasMany<NasDevice, $this>
