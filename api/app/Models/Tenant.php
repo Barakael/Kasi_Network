@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -27,8 +28,11 @@ use Illuminate\Support\Str;
  * @property string $timezone
  * @property string|null $snippe_api_key
  * @property string|null $snippe_webhook_secret
+ * @property string|null $palmpesa_api_token
+ * @property string|null $palmpesa_user_id
+ * @property string|null $palmpesa_vendor
  */
-#[Hidden(['snippe_api_key', 'snippe_webhook_secret'])]
+#[Hidden(['snippe_api_key', 'snippe_webhook_secret', 'palmpesa_api_token'])]
 class Tenant extends Model
 {
     /** @use HasFactory<TenantFactory> */
@@ -45,6 +49,9 @@ class Tenant extends Model
         'timezone',
         'snippe_api_key',
         'snippe_webhook_secret',
+        'palmpesa_api_token',
+        'palmpesa_user_id',
+        'palmpesa_vendor',
         'portal_name',
         'logo_path',
         'primary_color',
@@ -84,6 +91,7 @@ class Tenant extends Model
              */
             'snippe_api_key' => 'encrypted',
             'snippe_webhook_secret' => 'encrypted',
+            'palmpesa_api_token' => 'encrypted',
         ];
     }
 
@@ -125,12 +133,71 @@ class Tenant extends Model
     }
 
     /**
+     * Public URL for the operator logo, or null when none is on file.
+     */
+    public function logoUrl(): ?string
+    {
+        if (! filled($this->logo_path)) {
+            return null;
+        }
+
+        return url('/api/portal/tenants/'.$this->uuid.'/logo');
+    }
+
+    /**
+     * Inline data URI so a print sheet does not fetch the logo over the kiosk link.
+     */
+    public function logoDataUri(): ?string
+    {
+        if (! filled($this->logo_path) || ! Storage::disk('public')->exists($this->logo_path)) {
+            return null;
+        }
+
+        $bytes = Storage::disk('public')->get($this->logo_path);
+        $mime = Storage::disk('public')->mimeType($this->logo_path) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode($bytes);
+    }
+
+    public function palmpesaConfigured(): bool
+    {
+        return $this->palmpesaApiToken() !== null;
+    }
+
+    /**
+     * Bearer token used for PalmPesa USSD initiate. Tenant row wins; env is the
+     * fallback for a single-operator VPS.
+     */
+    public function palmpesaApiToken(): ?string
+    {
+        if ($this->offsetExists('palmpesa_api_token')) {
+            $stored = $this->getAttribute('palmpesa_api_token');
+
+            if (filled($stored)) {
+                return $stored;
+            }
+        }
+
+        $fallback = (string) config('kasi.palmpesa.api_token');
+
+        return $fallback !== '' ? $fallback : null;
+    }
+
+    /**
      * Whether this operator can take mobile money payments yet. Printed vouchers
-     * work without Snippe credentials; online sales do not.
+     * work without a gateway; online sales need PalmPesa or Snippe credentials.
      */
     public function acceptsOnlinePayments(): bool
     {
-        return filled($this->snippe_api_key) && filled($this->snippe_webhook_secret);
+        if ($this->palmpesaApiToken() !== null) {
+            return true;
+        }
+
+        if (! $this->offsetExists('snippe_api_key') || ! $this->offsetExists('snippe_webhook_secret')) {
+            return false;
+        }
+
+        return filled($this->getAttribute('snippe_api_key')) && filled($this->getAttribute('snippe_webhook_secret'));
     }
 
     /**
