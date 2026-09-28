@@ -23,7 +23,25 @@ final readonly class PortalContext
         public ?NasDevice $nasDevice = null,
         public ?string $clientMac = null,
         public ?string $clientIp = null,
+        public ?int $customerId = null,
     ) {}
+
+    public function isIdentified(): bool
+    {
+        return $this->customerId !== null;
+    }
+
+    public function withCustomer(int $customerId): self
+    {
+        return new self(
+            tenant: $this->tenant,
+            site: $this->site,
+            nasDevice: $this->nasDevice,
+            clientMac: $this->clientMac,
+            clientIp: $this->clientIp,
+            customerId: $customerId,
+        );
+    }
 
     /**
      * The router this client is connected through, needed to send it a CoA or to
