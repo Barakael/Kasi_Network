@@ -27,6 +27,12 @@ class UserResource extends JsonResource
             'phone' => $this->phone,
             'is_active' => $this->is_active,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
+            'two_factor_enabled' => $this->hasTwoFactor(),
+            'site_ids' => $this->whenLoaded('sites', fn () => $this->sites->pluck('id')->values()),
+            'sites' => $this->whenLoaded('sites', fn () => $this->sites->map(fn ($site) => [
+                'id' => $site->id,
+                'name' => $site->name,
+            ])->values()),
             'tenant' => $this->whenLoaded('tenant', fn () => new TenantResource($this->tenant)),
         ];
     }
