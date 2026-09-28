@@ -132,9 +132,31 @@ return [
     ],
 
     /*
-    | When Snippe is not configured, the portal can still issue a voucher after
-    | the customer picks a package. Turn this off in production unless you
-    | intend to give away codes without payment.
+    |---------------------------------------------------------------------------
+    | PalmPesa payments
+    |---------------------------------------------------------------------------
+    |
+    | USSD / STK initiate for the captive portal. Hosted checkout is not used:
+    | it would send phones off-hotspot to selcom.online. Live tokens live
+    | encrypted on the tenant; the values here are the single-operator fallback.
+    |
+    */
+
+    'palmpesa' => [
+        'base_url' => env('PALMPESA_BASE_URL', 'https://palmpesa.drmlelwa.co.tz'),
+        'api_token' => env('PALMPESA_API_TOKEN'),
+        'user_id' => env('PALMPESA_USER_ID'),
+        'vendor' => env('PALMPESA_VENDOR', 'TILL61103867'),
+        'address' => env('PALMPESA_ADDRESS', 'Dar es Salaam'),
+        'postcode' => env('PALMPESA_POSTCODE', '11111'),
+        'customer_email' => env('PALMPESA_CUSTOMER_EMAIL', 'hotspot@wayda.co.tz'),
+        'payment_timeout_minutes' => (int) env('PALMPESA_PAYMENT_TIMEOUT', 60),
+    ],
+
+    /*
+    | When live mobile money is not configured, the portal can still issue a
+    | voucher after the customer picks a package. Turn this off in production
+    | unless you intend to give away codes without payment.
     */
     'demo_checkout' => filter_var(
         env('KASI_PORTAL_DEMO_CHECKOUT', env('APP_ENV') === 'local'),
