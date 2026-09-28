@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Domain\Billing\CollectionBook;
 use App\Domain\Billing\RevenueBook;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
@@ -30,5 +31,26 @@ class ReportController
         return OrderResource::collection(
             Order::query()->with('plan')->latest('id')->paginate(50),
         );
+    }
+
+    public function collections(Request $request, CollectionBook $book): JsonResponse
+    {
+        $user = $request->user();
+        $period = $request->string('period')->value() ?: 'day';
+        $siteId = $request->integer('site_id') ?: null;
+        $agentId = $request->integer('agent_id') ?: null;
+
+        if ($user?->isAgent()) {
+            $agentId = $user->id;
+            $allowed = $user->sites()->pluck('sites.id');
+
+            if ($siteId) {
+                abort_unless($allowed->contains($siteId), 403);
+            } elseif ($allowed->count() === 1) {
+                $siteId = $allowed->first();
+            }
+        }
+
+        return response()->json($book->summary($period, $siteId, $agentId));
     }
 }
