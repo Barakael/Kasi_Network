@@ -25,6 +25,7 @@ class WaydaCommercialPlansTest extends TestCase
 
         Plan::factory()->for($tenant)->create(['name' => 'Saa Moja', 'price_minor' => 500]);
         Plan::factory()->for($tenant)->create(['name' => 'Masaa 10', 'price_minor' => 6000]);
+        Plan::factory()->for($tenant)->create(['name' => 'Masaa 4', 'price_minor' => 500]);
         Plan::factory()->for($tenant)->create([
             'name' => 'Siku Moja',
             'price_minor' => 1500,
@@ -38,11 +39,12 @@ class WaydaCommercialPlansTest extends TestCase
         $this->assertNotNull(Plan::onlyTrashed()->where('name', 'Saa Moja')->first());
 
         $plans = Plan::query()->orderBy('sort_order')->get();
+        $this->assertNull(Plan::query()->where('name', 'Masaa 4')->first());
         $this->assertCount(4, $plans);
-        $this->assertSame(['Masaa 4', 'Siku Moja', 'Wiki Moja', 'Mwezi Mmoja'], $plans->pluck('name')->all());
-        $this->assertSame([500, 1000, 5000, 20_000], $plans->pluck('price_minor')->all());
+        $this->assertSame(['Test bundle', 'Siku Moja', 'Wiki Moja', 'Mwezi Mmoja'], $plans->pluck('name')->all());
+        $this->assertSame([200, 1000, 5000, 20_000], $plans->pluck('price_minor')->all());
         $this->assertSame(BillingPeriod::Custom, $plans[0]->billing_period);
-        $this->assertSame(14_400, $plans[0]->validity_seconds);
+        $this->assertSame(7_200, $plans[0]->validity_seconds);
         $this->assertTrue($plans->every(fn (Plan $plan) => $plan->rate_limit_down_kbps === 3072));
         $this->assertTrue($plans->every(fn (Plan $plan) => $plan->data_cap_bytes === null));
         $this->assertFalse($plans->contains(fn (Plan $plan) => str_contains(strtolower((string) $plan->description), 'mbps')));
@@ -56,7 +58,10 @@ class WaydaCommercialPlansTest extends TestCase
         $site = Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
         (new WaydaCommercialPlansSeeder)->seedFor($tenant);
 
-        $response = $this->postJson('/api/portal/bootstrap', ['site' => $site->nas_identifier])
+        $response = $this->postJson('/api/portal/bootstrap', [
+            'site' => $site->nas_identifier,
+            'phone' => '0712345678',
+        ])
             ->assertOk()
             ->assertJsonCount(4, 'plans');
 
