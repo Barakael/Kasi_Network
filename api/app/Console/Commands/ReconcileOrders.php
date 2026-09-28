@@ -6,6 +6,8 @@ namespace App\Console\Commands;
 
 use App\Domain\Billing\OrderFulfiller;
 use App\Domain\Billing\OrderStatus;
+use App\Domain\Billing\PalmPesaException;
+use App\Domain\Billing\PalmPesaSettlement;
 use App\Domain\Billing\SnippeGateway;
 use App\Models\Order;
 use App\Models\Tenant;
@@ -16,9 +18,22 @@ class ReconcileOrders extends Command
 {
     protected $signature = 'kasi:reconcile-orders';
 
-    protected $description = 'Refresh stale pending Snippe orders against the payment API';
+    protected $description = 'Refresh stale pending payment orders against PalmPesa and Snippe';
 
-    public function handle(SnippeGateway $gateway, OrderFulfiller $fulfiller): int
+    public function handle(
+        SnippeGateway $gateway,
+        OrderFulfiller $fulfiller,
+        PalmPesaSettlement $palmPesa,
+    ): int {
+        $snippeCount = $this->reconcileSnippe($gateway, $fulfiller);
+        $palmCount = $this->reconcilePalmPesa($palmPesa, $fulfiller);
+
+        $this->components->info('Reconciled '.$snippeCount.' Snippe and '.$palmCount.' PalmPesa order(s).');
+
+        return self::SUCCESS;
+    }
+
+    private function reconcileSnippe(SnippeGateway $gateway, OrderFulfiller $fulfiller): int
     {
         $orders = Order::withoutTenantScope()
             ->whereIn('status', [OrderStatus::Pending, OrderStatus::AwaitingPayment])
@@ -57,8 +72,40 @@ class ReconcileOrders extends Command
             }
         }
 
-        $this->components->info('Reconciled '.$orders->count().' order(s).');
+        return $orders->count();
+    }
 
-        return self::SUCCESS;
+    private function reconcilePalmPesa(PalmPesaSettlement $palmPesa, OrderFulfiller $fulfiller): int
+    {
+        $orders = Order::withoutTenantScope()
+            ->whereIn('status', [OrderStatus::Pending, OrderStatus::AwaitingPayment])
+            ->whereNotNull('palmpesa_order_id')
+            ->orderBy('id')
+            ->limit(100)
+            ->get();
+
+        foreach ($orders as $order) {
+            $tenant = Tenant::query()->find($order->tenant_id);
+
+            if ($tenant === null) {
+                continue;
+            }
+
+            try {
+                $fresh = $palmPesa->sync($order, $tenant);
+            } catch (PalmPesaException) {
+                continue;
+            }
+
+            if (
+                in_array($fresh->status, [OrderStatus::Pending, OrderStatus::AwaitingPayment], true)
+                && $fresh->expires_at?->isPast()
+            ) {
+                $fresh->update(['status' => OrderStatus::Expired]);
+                $fulfiller->release($fresh);
+            }
+        }
+
+        return $orders->count();
     }
 }

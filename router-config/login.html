@@ -1,50 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wi-Fi login</title>
-  <script src="/md5.js"></script>
-  <style>
-    html { color-scheme: light only; }
-    body { margin: 0; min-height: 100vh; padding: 20px 16px; background: #e8eef6; color: #0b1220; font-family: system-ui, sans-serif; }
-    .card { width: 100%; max-width: 22rem; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-radius: 16px; padding: 22px 18px; }
-    h1 { margin: 0; font-size: 1.35rem; text-align: center; }
-    .lead { margin: 8px 0 16px; text-align: center; color: #334155; }
-    label { display: block; margin: 0 0 6px; font-weight: 650; }
-    input { width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font: inherit; }
-    .go { display: block; width: 100%; margin-top: 12px; min-height: 48px; border: 0; border-radius: 12px; background: #1d4ed8; color: #fff; font-weight: 800; }
-    .note { margin: 12px 0 0; color: #64748b; font-size: 0.8rem; text-align: center; }
-  </style>
+  <title>Kasi</title>
 </head>
 <body>
-  <div class="card">
-    <h1>Wi-Fi login</h1>
-    <p class="lead">Weka voucher hapa. Paketi zinaonekana kwenye kadi au kwa mhudumu.</p>
-    <form onsubmit="return doLogin(event)">
-      <label for="user">Namba ya voucher</label>
-      <input id="user" maxlength="32" autocapitalize="characters" autocomplete="off" placeholder="XXXXX-XXXXX" required>
-      <button class="go" type="submit">Pokea Wi-Fi</button>
-    </form>
-    <p class="note">$(identity)</p>
-  </div>
-  <form name="sendin" action="$(link-login-only)" method="post" style="display:none">
-    <input type="hidden" name="username">
-    <input type="hidden" name="password">
-    <input type="hidden" name="dst" value="$(link-orig)">
-    <input type="hidden" name="popup" value="true">
-  </form>
   <script>
-    function doLogin(ev) {
-      ev.preventDefault();
-      var code = document.getElementById('user').value.replace(/\s+/g, '').toUpperCase();
-      document.sendin.username.value = code;
-      document.sendin.password.value = (typeof hexMD5 === 'function')
-        ? hexMD5('$(chap-id)' + code + '$(chap-challenge)')
-        : code;
-      document.sendin.submit();
-      return false;
+    var err = "$(error)";
+    var params = new URLSearchParams({
+      site: "kasi-demo-site-1",
+      view: "packages",
+      mac: "$(mac)",
+      ip: "$(ip)",
+      link_login: "$(link-login-only)",
+      link_orig: "$(link-orig)",
+      chap_id: "$(chap-id)",
+      chap_challenge: "$(chap-challenge)"
+    });
+    if (err && err.indexOf("$(") === -1) {
+      params.set("error", err);
     }
+    window.location.replace("https://net.wayda.co.tz/?" + params.toString());
   </script>
 </body>
 </html>

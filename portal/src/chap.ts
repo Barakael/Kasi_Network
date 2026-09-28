@@ -37,29 +37,15 @@ export function submitHotspotLogin(
   linkLogin: string,
   username: string,
   password: string,
-  chapId?: string | null,
-  chapChallenge?: string | null,
-  dst?: string | null,
+  _chapId?: string | null,
+  _chapChallenge?: string | null,
+  _dst?: string | null,
 ): void {
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = linkLogin;
-
-  const fields: Record<string, string> = {
-    username,
-    password: chapId && chapChallenge ? chapMd5(chapId, password, chapChallenge) : password,
-    dst: dst || '',
-    popup: 'true',
-  };
-
-  for (const [name, value] of Object.entries(fields)) {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  }
-
-  document.body.appendChild(form);
-  form.submit();
+  const login = new URL(linkLogin);
+  const url = new URL('/go.html', login.origin);
+  url.searchParams.set('username', username);
+  url.searchParams.set('password', password);
+  url.searchParams.set('dst', `${window.location.origin}/connected.html`);
+  url.searchParams.set('popup', 'false');
+  window.location.replace(url.toString());
 }

@@ -14,10 +14,10 @@ rewrite_mac_username {
 			&Tmp-String-0 := "%{toupper:%{Tmp-String-0}}"
 		}
 
-		if ("%{sql:SELECT vu.username FROM voucher_devices vd INNER JOIN voucher_usage vu ON vu.voucher_id = vd.voucher_id INNER JOIN nas_devices nd ON nd.tenant_id = vd.tenant_id WHERE vd.mac = '%{Tmp-String-0}' AND vd.status = 'active' AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL LIMIT 1}" != "") {
+		if ("%{sql:SELECT vu.username FROM voucher_devices vd INNER JOIN voucher_usage vu ON vu.voucher_id = vd.voucher_id INNER JOIN nas_devices nd ON nd.tenant_id = vd.tenant_id INNER JOIN sites s ON s.id = nd.site_id WHERE vd.mac = '%{Tmp-String-0}' AND vd.status = 'active' AND nd.deleted_at IS NULL AND (nd.nasname = '%{Packet-Src-IP-Address}' OR nd.nasname = '%{NAS-IP-Address}' OR nd.api_host = '%{NAS-IP-Address}' OR (s.nas_identifier = '%{NAS-Identifier}' AND '%{NAS-Identifier}' != '')) LIMIT 1}" != "") {
 			update request {
 				&Stripped-User-Name := "%{User-Name}"
-				&User-Name := "%{sql:SELECT vu.username FROM voucher_devices vd INNER JOIN voucher_usage vu ON vu.voucher_id = vd.voucher_id INNER JOIN nas_devices nd ON nd.tenant_id = vd.tenant_id WHERE vd.mac = '%{Tmp-String-0}' AND vd.status = 'active' AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL LIMIT 1}"
+				&User-Name := "%{sql:SELECT vu.username FROM voucher_devices vd INNER JOIN voucher_usage vu ON vu.voucher_id = vd.voucher_id INNER JOIN nas_devices nd ON nd.tenant_id = vd.tenant_id INNER JOIN sites s ON s.id = nd.site_id WHERE vd.mac = '%{Tmp-String-0}' AND vd.status = 'active' AND nd.deleted_at IS NULL AND (nd.nasname = '%{Packet-Src-IP-Address}' OR nd.nasname = '%{NAS-IP-Address}' OR nd.api_host = '%{NAS-IP-Address}' OR (s.nas_identifier = '%{NAS-Identifier}' AND '%{NAS-Identifier}' != '')) LIMIT 1}"
 			}
 		}
 		else {

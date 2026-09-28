@@ -30,6 +30,20 @@ final readonly class NasSynchroniser
         );
     }
 
+    /**
+     * Re-writes the RADIUS client after the operator IP or secret changes.
+     * The old nasname row is dropped first: FreeRADIUS matches on source IP,
+     * so leaving the previous address would accept a router that is no longer ours.
+     */
+    public function resync(NasDevice $device, ?string $previousNasname = null): void
+    {
+        if ($previousNasname !== null && $previousNasname !== $device->nasname) {
+            Nas::query()->where('nasname', $previousNasname)->delete();
+        }
+
+        $this->sync($device);
+    }
+
     public function forget(NasDevice $device): void
     {
         Nas::query()->where('nasname', $device->nasname)->delete();

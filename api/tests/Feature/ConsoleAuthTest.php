@@ -59,6 +59,7 @@ class ConsoleAuthTest extends TestCase
         $response->assertOk()
             ->assertJsonMissingPath('user.tenant.snippe_api_key')
             ->assertJsonMissingPath('user.tenant.snippe_webhook_secret')
+            ->assertJsonMissingPath('user.tenant.palmpesa_api_token')
             ->assertJsonPath('user.tenant.accepts_online_payments', true);
 
         $this->assertStringNotContainsString('snp_test_', $response->getContent());
@@ -183,7 +184,7 @@ class ConsoleAuthTest extends TestCase
 
         // Abilities mirror the role, so a stolen agent token stays useless for
         // management endpoints even if route middleware is later loosened.
-        $this->assertSame(['vouchers:print'], $token->abilities);
+        $this->assertSame(['vouchers:print', 'desk'], $token->abilities);
     }
 
     public function test_signing_out_revokes_only_the_current_token(): void

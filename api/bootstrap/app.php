@@ -19,9 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             /*
-             * The captive portal and the Snippe webhook are separate surfaces
-             * from the console API: neither is authenticated, and each resolves
-             * its tenant differently. Kept in their own files so it stays obvious
+             * The captive portal and payment webhooks are separate surfaces from
+             * the console API: neither is authenticated, and each resolves its
+             * tenant differently. Kept in their own files so it stays obvious
              * which routes are reachable without a token.
              */
             Route::middleware('api')

@@ -7,10 +7,13 @@ namespace App\Models;
 use App\Domain\Tenancy\BelongsToTenant;
 use Database\Factories\NasDeviceFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * A MikroTik router acting as the hotspot NAS.
@@ -91,5 +94,69 @@ class NasDevice extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function lastRadiusAt(): ?Carbon
+    {
+        if ($this->last_seen_at instanceof Carbon) {
+            return $this->last_seen_at;
+        }
+
+        $ips = array_values(array_filter([$this->nasname, $this->api_host]));
+
+        if ($ips === []) {
+            return null;
+        }
+
+        $value = RadAcct::query()
+            ->whereIn('nasipaddress', $ips)
+            ->max('acctupdatetime');
+
+        if ($value === null) {
+            $value = RadAcct::query()
+                ->whereIn('nasipaddress', $ips)
+                ->max('acctstarttime');
+        }
+
+        return $value === null ? null : Carbon::parse($value);
+    }
+
+    public function isQuiet(int $minutes = 15): bool
+    {
+        $last = $this->lastRadiusAt();
+
+        return $last === null || $last->lt(now()->subMinutes($minutes));
+    }
+
+    /**
+     * Accounting NAS-IP-Address is often the router's LAN address, while nasname
+     * is the public IP FreeRADIUS sees after NAT.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeForRadiusIp(Builder $query, string $ip): Builder
+    {
+        return $query->where(function (Builder $inner) use ($ip): void {
+            $inner->where('nasname', $ip)->orWhere('api_host', $ip);
+        });
+    }
+
+    /**
+     * @return Collection<string, self>
+     */
+    public static function indexedByRadiusIp(): Collection
+    {
+        $index = new Collection;
+
+        foreach (static::withoutTenantScope()->get() as $device) {
+            $index->put($device->nasname, $device);
+
+            if (filled($device->api_host)) {
+                $index->put($device->api_host, $device);
+            }
+        }
+
+        return $index;
     }
 }

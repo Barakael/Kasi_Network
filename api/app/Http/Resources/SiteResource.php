@@ -28,6 +28,7 @@ class SiteResource extends JsonResource
             'status' => $this->status,
             'address' => $this->address,
             'nas_devices_count' => $this->whenCounted('nasDevices'),
+            'agents' => UserResource::collection($this->whenLoaded('agents')),
         ];
     }
 }

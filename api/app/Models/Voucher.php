@@ -51,6 +51,7 @@ class Voucher extends Model
         'tenant_id',
         'plan_id',
         'batch_id',
+        'customer_id',
         'code',
         'code_hash',
         'code_suffix',
@@ -107,6 +108,14 @@ class Voucher extends Model
     public function batch(): BelongsTo
     {
         return $this->belongsTo(VoucherBatch::class, 'batch_id');
+    }
+
+    /**
+     * @return BelongsTo<Customer, $this>
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     /**

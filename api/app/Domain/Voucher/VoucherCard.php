@@ -30,6 +30,8 @@ final readonly class VoucherCard
         public string $terms,
         public ?string $ssid,
         public ?string $expiryNote,
+        public string $operatorName,
+        public ?string $logoDataUri,
     ) {}
 
     public static function for(Voucher $voucher, Tenant $tenant, ?Site $site = null): self
@@ -42,8 +44,10 @@ final readonly class VoucherCard
             qrSvg: self::qrSvg(self::qrPayload($code)),
             planName: $voucher->plan->name,
             terms: self::terms($voucher),
-            ssid: $site?->ssid ?? $tenant->name,
+            ssid: $site?->ssid ?? $tenant->portal_name ?? $tenant->name,
             expiryNote: self::expiryNote($voucher),
+            operatorName: $tenant->portal_name ?? $tenant->name,
+            logoDataUri: $tenant->logoDataUri(),
         );
     }
 
@@ -126,10 +130,6 @@ final readonly class VoucherCard
             $parts[] = self::humanBytes($voucher->data_cap_bytes);
         }
 
-        if ($voucher->rate_limit_down_kbps !== null) {
-            $parts[] = self::humanSpeed($voucher->rate_limit_down_kbps);
-        }
-
         if ($voucher->device_limit > 1) {
             $parts[] = $voucher->device_limit.' devices';
         }
@@ -188,13 +188,6 @@ final readonly class VoucherCard
         }
 
         return $bytes.' B';
-    }
-
-    private static function humanSpeed(int $kbps): string
-    {
-        return $kbps >= 1000
-            ? rtrim(rtrim(number_format($kbps / 1000, 1, '.', ''), '0'), '.').' Mbps'
-            : $kbps.' Kbps';
     }
 
     private static function plural(int $count, string $noun): string

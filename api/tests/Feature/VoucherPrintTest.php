@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Domain\Voucher\BatchStatus;
 use App\Domain\Voucher\VoucherCard;
+use App\Domain\Voucher\VoucherCode;
 use App\Domain\Voucher\VoucherIssuer;
 use App\Domain\Voucher\VoucherStatus;
 use App\Models\Plan;
@@ -57,9 +58,11 @@ class VoucherPrintTest extends TestCase
         }
 
         $response->assertSee('Daily 24h')
-            // Decimal GB, matching how the bundle was advertised.
+            // Decimal GB, matching how the bundle was advertised. Speed is
+            // enforced on the router but never printed on the card.
             ->assertSee('5 GB')
-            ->assertSee('4 Mbps')
+            ->assertDontSee('4 Mbps')
+            ->assertDontSee('Mbps')
             // Inline SVG rather than an image URL, so a card cannot print with a
             // hole where its code should be.
             ->assertSee('<svg', escape: false)
@@ -289,9 +292,42 @@ class VoucherPrintTest extends TestCase
          */
         $this->assertSame($expected, VoucherCard::redemptionUrl($voucher->code));
         $this->assertSame(
-            \App\Domain\Voucher\VoucherCode::normalise($voucher->code),
+            VoucherCode::normalise($voucher->code),
             VoucherCard::qrPayload($voucher->code),
         );
+    }
+
+    #[Test]
+    public function a_fully_printed_batch_is_not_listed_as_printable(): void
+    {
+        $batch = $this->readyBatch(2);
+
+        $this->actingAs($this->owner)
+            ->get("/api/print/voucher-batches/{$batch->id}")
+            ->assertOk();
+
+        $this->actingAs($this->owner)
+            ->getJson("/api/v1/voucher-batches/{$batch->id}")
+            ->assertOk()
+            ->assertJsonPath('data.printable_count', 0)
+            ->assertJsonPath('data.is_printable', false);
+    }
+
+    #[Test]
+    public function a_print_error_is_json_even_when_the_console_asked_for_html(): void
+    {
+        $batch = $this->readyBatch(1);
+
+        $this->actingAs($this->owner)
+            ->get("/api/print/voucher-batches/{$batch->id}")
+            ->assertOk();
+
+        $this->actingAs($this->owner)
+            ->get("/api/print/voucher-batches/{$batch->id}", [
+                'Accept' => 'text/html',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('batch');
     }
 
     private function readyBatch(int $quantity): VoucherBatch

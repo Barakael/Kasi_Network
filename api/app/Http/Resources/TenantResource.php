@@ -22,6 +22,7 @@ class TenantResource extends JsonResource
             // The public identifier; the integer key is never exposed.
             'uuid' => $this->uuid,
             'name' => $this->name,
+            'status' => $this->status,
             'slug' => $this->slug,
             'code_prefix' => $this->code_prefix,
             'currency' => $this->currency,
@@ -29,12 +30,15 @@ class TenantResource extends JsonResource
             'portal_name' => $this->portal_name,
             'primary_color' => $this->primary_color,
             'support_phone' => $this->support_phone,
+            'logo_url' => $this->logoUrl(),
+            'palmpesa_configured' => $this->palmpesaConfigured(),
             /*
              * Whether payments are configured, never the credentials themselves.
              * The console needs this to decide if online bundle sales can be
              * offered at all.
              */
             'accepts_online_payments' => $this->acceptsOnlinePayments(),
+            'users_count' => $this->whenCounted('users'),
         ];
     }
 }

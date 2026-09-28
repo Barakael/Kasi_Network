@@ -50,6 +50,16 @@ class TenantFactory extends Factory
         ]);
     }
 
+    /**
+     * An operator that takes USSD payments through PalmPesa.
+     */
+    public function withPalmPesa(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'palmpesa_api_token' => 'palm_test_'.Str::random(32),
+        ]);
+    }
+
     public function suspended(): static
     {
         return $this->state(fn (array $attributes): array => [

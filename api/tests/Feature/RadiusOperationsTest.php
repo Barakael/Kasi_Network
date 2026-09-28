@@ -94,6 +94,32 @@ class RadiusOperationsTest extends TestCase
         $this->assertSame(VoucherStatus::Exhausted, $voucher->fresh()->status);
     }
 
+    public function test_quota_enforcer_matches_a_router_by_api_host(): void
+    {
+        $tenant = Tenant::factory()->create(['code_prefix' => 'KAS']);
+        $this->actingForTenant($tenant);
+        $site = Site::factory()->for($tenant)->create();
+        NasDevice::factory()->for($site)->create([
+            'tenant_id' => $tenant->id,
+            'nasname' => '102.202.75.144',
+            'api_host' => '192.168.88.1',
+        ]);
+        $plan = Plan::factory()->for($tenant)->withDataCap(1_000_000)->create();
+        $voucher = app(VoucherIssuer::class)->issueOne($plan);
+        $voucher->update(['status' => VoucherStatus::Active]);
+
+        RadAcct::factory()->forUsername($voucher->code)->usingBytes(800_000, 800_000)->create([
+            'nasipaddress' => '192.168.88.1',
+        ]);
+
+        Process::fake([
+            '*' => Process::result(output: 'Sent Disconnect-Request'),
+        ]);
+
+        $this->assertSame(1, app(QuotaEnforcer::class)->enforce());
+        $this->assertSame(VoucherStatus::Exhausted, $voucher->fresh()->status);
+    }
+
     public function test_binding_a_mac_writes_calling_station_id_not_a_username(): void
     {
         $tenant = Tenant::factory()->create(['code_prefix' => 'KAS']);

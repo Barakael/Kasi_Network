@@ -29,7 +29,7 @@ export function AgentPrintPage() {
                     className={primaryBtn}
                     onClick={() => {
                       setError(null);
-                      void openPrintSheet(batch.id).catch((err: Error) => setError(err.message));
+                      void openPrintSheet(batch.id, batch.printable_count).catch((err: Error) => setError(err.message));
                     }}
                   >
                     Print

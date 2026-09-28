@@ -59,7 +59,7 @@ export function PlansPage() {
 
   return (
     <div>
-      <PageHeader title="Bundles" subtitle="Prices and limits sold at the portal and on printed cards.">
+      <PageHeader title="Packages" subtitle="Prices sold at the portal and on printed cards. Customers never see kbps.">
         <button type="button" className={primaryBtn} onClick={() => setOpen((v) => !v)}>
           {open ? 'Close' : 'New bundle'}
         </button>
@@ -123,6 +123,9 @@ export function PlansPage() {
 }
 
 function PlanCard({ plan, currency, onRetire }: { plan: Plan; currency: string; onRetire: () => void }) {
+  const client = useQueryClient();
+  const [offer, setOffer] = useState({ price_minor: plan.price_minor, offer_label: '', offer_ends_at: '' });
+
   return (
     <Card>
       <div className="flex items-start justify-between gap-2">
@@ -130,12 +133,41 @@ function PlanCard({ plan, currency, onRetire }: { plan: Plan; currency: string; 
           <h2 className="text-lg font-semibold text-ink-900">{plan.name}</h2>
           <p className="text-sm text-ink-700">{plan.billing_period_label}</p>
         </div>
-        <Badge tone={plan.is_active === false ? 'slate' : 'green'}>{money(plan.price_minor, currency)}</Badge>
+        <Badge tone={plan.has_active_offer ? 'amber' : plan.is_active === false ? 'slate' : 'green'}>
+          {money(plan.price_minor, currency)}
+        </Badge>
       </div>
+      {plan.has_active_offer && <p className="mt-2 text-sm text-amber-800">{plan.offer_label}</p>}
       <p className="mt-2 text-sm text-ink-800">
         {bytes(plan.data_cap_bytes)} · {plan.device_limit} device{plan.device_limit === 1 ? '' : 's'}
-        {plan.rate_limit_down_kbps ? ` · ${plan.rate_limit_down_kbps} kbps` : ''}
       </p>
+      {plan.has_active_offer ? (
+        <button
+          type="button"
+          className={`${secondaryBtn} mt-3`}
+          onClick={() => void api.restorePlanPrice(plan.id).then(() => client.invalidateQueries({ queryKey: ['plans'] }))}
+        >
+          Rudi bei
+        </button>
+      ) : (
+        <form
+          className="mt-3 grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void api.offerPlan(plan.id, {
+              ...offer,
+              offer_ends_at: offer.offer_ends_at ? new Date(offer.offer_ends_at).toISOString() : '',
+            }).then(() => client.invalidateQueries({ queryKey: ['plans'] }));
+          }}
+        >
+          <input className={inputClass} placeholder="Wiki Moja 4000" value={offer.offer_label} onChange={(e) => setOffer({ ...offer, offer_label: e.target.value })} />
+          <input className={inputClass} type="number" value={offer.price_minor} onChange={(e) => setOffer({ ...offer, price_minor: Number(e.target.value) })} />
+          <input className={inputClass} type="datetime-local" value={offer.offer_ends_at} onChange={(e) => setOffer({ ...offer, offer_ends_at: e.target.value })} />
+          <button type="submit" className={secondaryBtn}>
+            Set offer
+          </button>
+        </form>
+      )}
       <button type="button" className={`${secondaryBtn} mt-3`} onClick={onRetire}>
         Retire
       </button>

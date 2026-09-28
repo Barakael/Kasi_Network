@@ -33,11 +33,31 @@ class PortalBootstrapTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('branding.operator', 'Kariakoo WiFi')
             ->assertJsonPath('site.name', $site->name)
-            // Normalised from the dashed form the router sent.
             ->assertJsonPath('client.mac', 'AA:BB:CC:DD:EE:FF')
-            ->assertJsonCount(3, 'plans');
+            ->assertJsonPath('needs_phone', true)
+            ->assertJsonCount(0, 'plans');
 
         $this->assertNotEmpty($response->json('token'));
+    }
+
+    public function test_packages_appear_only_after_a_tanzanian_phone_is_saved(): void
+    {
+        $tenant = Tenant::factory()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        Plan::factory()->for($tenant)->count(2)->create();
+
+        $this->postJson('/api/portal/bootstrap', ['site' => 'site-abc'])
+            ->assertOk()
+            ->assertJsonPath('needs_phone', true)
+            ->assertJsonCount(0, 'plans');
+
+        $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'phone' => '0629288966',
+        ])
+            ->assertOk()
+            ->assertJsonPath('needs_phone', false)
+            ->assertJsonCount(2, 'plans');
     }
 
     public function test_bundles_that_are_inactive_or_not_sold_online_are_hidden(): void
@@ -50,9 +70,10 @@ class PortalBootstrapTest extends TestCase
         // Sold only as printed vouchers at the counter.
         Plan::factory()->for($tenant)->create(['is_active' => true, 'is_sold_online' => false]);
 
-        $this->postJson('/api/portal/bootstrap', ['site' => 'site-abc'])
+        $this->postJson('/api/portal/bootstrap', ['site' => 'site-abc', 'phone' => '0712345678'])
             ->assertOk()
-            ->assertJsonCount(1, 'plans');
+            ->assertJsonCount(1, 'plans')
+            ->assertJsonMissingPath('plans.0.rate_limit_down_kbps');
     }
 
     public function test_another_operators_bundles_are_never_listed(): void
@@ -64,7 +85,7 @@ class PortalBootstrapTest extends TestCase
         Plan::factory()->for($mine)->count(2)->create();
         Plan::factory()->for($theirs)->count(5)->create();
 
-        $this->postJson('/api/portal/bootstrap', ['site' => 'site-mine'])
+        $this->postJson('/api/portal/bootstrap', ['site' => 'site-mine', 'phone' => '0712345678'])
             ->assertOk()
             ->assertJsonCount(2, 'plans');
     }
@@ -122,6 +143,28 @@ class PortalBootstrapTest extends TestCase
             ->assertJsonPath('capabilities.online_payments', true);
     }
 
+    public function test_online_payments_are_advertised_when_a_palmpesa_token_is_set(): void
+    {
+        $tenant = Tenant::factory()->withPalmPesa()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-palm']);
+
+        $this->postJson('/api/portal/bootstrap', ['site' => 'site-palm'])
+            ->assertOk()
+            ->assertJsonPath('capabilities.online_payments', true);
+    }
+
+    public function test_online_payments_are_advertised_when_the_palmpesa_env_fallback_is_set(): void
+    {
+        config()->set('kasi.palmpesa.api_token', 'env-palm-token');
+
+        $tenant = Tenant::factory()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-env-palm']);
+
+        $this->postJson('/api/portal/bootstrap', ['site' => 'site-env-palm'])
+            ->assertOk()
+            ->assertJsonPath('capabilities.online_payments', true);
+    }
+
     public function test_a_token_resolves_back_to_the_site_it_was_issued_for(): void
     {
         $tenant = Tenant::factory()->create();
@@ -149,9 +192,12 @@ class PortalBootstrapTest extends TestCase
 
         /*
          * The whole point of signing the token: a client cannot edit it to claim
-         * a different site and redeem another operator's vouchers.
+         * a different site and redeem another operator's vouchers. Appending a
+         * character is not enough — base64 decode is not strict — so a byte in
+         * the payload is flipped instead.
          */
-        $this->assertNull(app(PortalToken::class)->parse($token.'x'));
+        $tampered = ($token[0] === 'A' ? 'B' : 'A').substr($token, 1);
+        $this->assertNull(app(PortalToken::class)->parse($tampered));
         $this->assertNull(app(PortalToken::class)->parse(base64_encode('{"t":1,"s":1,"x":99999999999}')));
         $this->assertNull(app(PortalToken::class)->parse('not-a-token'));
         $this->assertNull(app(PortalToken::class)->parse(null));

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kasi</title>
+  <script src="/md5.js"></script>
+</head>
+<body>
+  <p style="font-family:sans-serif;padding:24px">Inaunganisha…</p>
+  <form name="sendin" action="$(link-login-only)" method="post">
+    <input type="hidden" name="username">
+    <input type="hidden" name="password">
+    <input type="hidden" name="dst" value="https://net.wayda.co.tz/connected.html">
+    <input type="hidden" name="popup" value="false">
+  </form>
+  <script>
+    (function () {
+      var q = new URLSearchParams(window.location.search);
+      var user = q.get("username");
+      var pass = q.get("password");
+      if (!user || !pass) {
+        window.location.replace("https://net.wayda.co.tz/?site=kasi-demo-site-1&view=packages");
+        return;
+      }
+      var f = document.sendin;
+      if (!f.action || String(f.action).indexOf("$(") !== -1) {
+        f.action = "/login";
+      }
+      f.username.value = user;
+      var chapId = "$(chap-id)";
+      var chapChallenge = "$(chap-challenge)";
+      if (typeof hexMD5 === "function" && chapId && chapChallenge && chapId.indexOf("$(") === -1) {
+        f.password.value = hexMD5(chapId + pass + chapChallenge);
+      } else {
+        f.password.value = pass;
+      }
+      var dst = q.get("dst");
+      if (dst) {
+        f.dst.value = dst;
+      }
+      f.submit();
+    })();
+  </script>
+</body>
+</html>

@@ -29,7 +29,14 @@ server kasi {
 		# Reject a voucher presented on another operator's router. Codes
 		# are globally unique but still must not work across tenants if a
 		# code is leaked; NAS-Identifier is the site's nas_identifier.
-		if ("%{sql:SELECT 1 FROM voucher_usage vu INNER JOIN nas_devices nd ON nd.tenant_id = vu.tenant_id INNER JOIN sites s ON s.id = nd.site_id WHERE vu.username = '%{User-Name}' AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL AND (s.nas_identifier = '%{NAS-Identifier}' OR '%{NAS-Identifier}' = '') LIMIT 1}" != "1") {
+		#
+		# nasname is the address FreeRADIUS sees (packet source, often the
+		# office WAN after NAT). MikroTik's NAS-IP-Address attribute is
+		# often the LAN IP. Match either, plus api_host when that is the
+		# hotspot LAN address. RadSec (TCP 2083) often leaves
+		# Packet-Src-IP-Address unset, so a matching NAS-Identifier is
+		# enough once the hotspot profile sends radius-location-id.
+		if ("%{sql:SELECT 1 FROM voucher_usage vu INNER JOIN nas_devices nd ON nd.tenant_id = vu.tenant_id INNER JOIN sites s ON s.id = nd.site_id WHERE vu.username = '%{User-Name}' AND nd.deleted_at IS NULL AND (nd.nasname = '%{Packet-Src-IP-Address}' OR nd.nasname = '%{NAS-IP-Address}' OR nd.api_host = '%{NAS-IP-Address}' OR (s.nas_identifier = '%{NAS-Identifier}' AND '%{NAS-Identifier}' != '')) LIMIT 1}" != "1") {
 			update reply {
 				Reply-Message := "Voucher not valid on this network"
 			}
@@ -96,5 +103,39 @@ server kasi {
 			sql
 			attr_filter.access_reject
 		}
+	}
+}
+
+# RADIUS over TLS (RadSec). The office LTE Cudy forwards TCP (HTTPS works) but
+# drops UDP 1812/1813, so MikroTik must use protocol=radsec on TCP 2083.
+listen {
+	ipaddr = *
+	port = 2083
+	type = auth+acct
+	proto = tcp
+	virtual_server = kasi
+	clients = radsec
+
+	limit {
+		max_connections = 32
+		lifetime = 0
+		idle_timeout = 300
+	}
+
+	tls {
+		private_key_file = /opt/kasi-certs/server.pem
+		certificate_file = /opt/kasi-certs/server.pem
+		ca_file = /opt/kasi-certs/ca.pem
+		fragment_size = 8192
+		cipher_list = "DEFAULT"
+		require_client_cert = yes
+	}
+}
+
+clients radsec {
+	client kasi-mikrotik {
+		ipaddr = 0.0.0.0/0
+		proto = tls
+		secret = radsec
 	}
 }

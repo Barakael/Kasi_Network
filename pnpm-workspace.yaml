@@ -1,7 +1,0 @@
-packages:
-  - portal
-  - console
-
-# Vite ships platform-specific esbuild binaries that require a postinstall step.
-onlyBuiltDependencies:
-  - esbuild

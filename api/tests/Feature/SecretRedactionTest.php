@@ -55,6 +55,12 @@ class SecretRedactionTest extends TestCase
         $this->assertArrayNotHasKey('snippe_api_key', $serialised);
         $this->assertArrayNotHasKey('snippe_webhook_secret', $serialised);
         $this->assertNotEmpty($tenant->snippe_api_key);
+
+        $palm = Tenant::factory()->withPalmPesa()->create();
+        $palmSerialised = $palm->toArray();
+
+        $this->assertArrayNotHasKey('palmpesa_api_token', $palmSerialised);
+        $this->assertNotEmpty($palm->palmpesa_api_token);
     }
 
     #[Test]

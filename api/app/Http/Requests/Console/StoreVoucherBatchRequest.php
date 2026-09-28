@@ -11,6 +11,7 @@ use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreVoucherBatchRequest extends FormRequest
 {
@@ -65,6 +66,31 @@ class StoreVoucherBatchRequest extends FormRequest
 
             'notes' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $agentId = $this->integer('assigned_agent_id') ?: null;
+            $siteId = $this->integer('site_id') ?: null;
+
+            if ($agentId === null || $siteId === null) {
+                return;
+            }
+
+            $assigned = User::query()
+                ->where('id', $agentId)
+                ->where('role', UserRole::Agent)
+                ->whereHas('sites', fn ($q) => $q->where('sites.id', $siteId))
+                ->exists();
+
+            if (! $assigned) {
+                $validator->errors()->add(
+                    'assigned_agent_id',
+                    'That agent is not assigned to this site.',
+                );
+            }
+        });
     }
 
     /**

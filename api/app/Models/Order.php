@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
  * @property string $phone
  * @property string|null $client_mac
  * @property string|null $snippe_reference
+ * @property string|null $palmpesa_order_id
  * @property Carbon|null $paid_at
  * @property Carbon|null $expires_at
  */
@@ -52,6 +53,7 @@ class Order extends Model
         'client_ip',
         'snippe_reference',
         'snippe_external_reference',
+        'palmpesa_order_id',
         'channel_provider',
         'fees_minor',
         'net_minor',

@@ -47,5 +47,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PALMPESA_API_TOKEN" value=""/>
+        <env name="PALMPESA_USER_ID" value=""/>
+        <env name="KASI_PORTAL_DEMO_CHECKOUT" value="false"/>
     </php>
 </phpunit>

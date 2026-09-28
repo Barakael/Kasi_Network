@@ -1,15 +1,21 @@
 import { Navigate, Route, Routes } from 'react-router';
-import { isAgent, useAuth } from './auth';
+import { isAgent, isPlatformAdmin, useAuth } from './auth';
 import { Layout } from './components/Layout';
-import { AgentPrintPage } from './pages/AgentPrint';
+import { AgentDeskPage } from './pages/AgentDesk';
+import { AgentsPage } from './pages/Agents';
 import { BatchesPage } from './pages/Batches';
+import { CampaignsPage } from './pages/Campaigns';
+import { CollectionsPage } from './pages/Collections';
+import { CustomersPage } from './pages/Customers';
 import { DashboardPage } from './pages/Dashboard';
-import { DevicesPage } from './pages/Devices';
 import { LoginPage } from './pages/Login';
 import { PlansPage } from './pages/Plans';
-import { ReportsPage } from './pages/Reports';
+import { PlatformInvoicesPage } from './pages/PlatformInvoices';
+import { PlatformPage } from './pages/Platform';
 import { RoutersPage } from './pages/Routers';
 import { SessionsPage } from './pages/Sessions';
+import { SettingsPage } from './pages/Settings';
+import { SitesPage } from './pages/Sites';
 import type { ReactNode } from 'react';
 
 function Splash() {
@@ -20,7 +26,15 @@ function Splash() {
   );
 }
 
-function Guard({ children, agents }: { children: ReactNode; agents?: 'only' | 'forbid' }) {
+function Guard({
+  children,
+  agents,
+  platform,
+}: {
+  children: ReactNode;
+  agents?: 'only' | 'forbid';
+  platform?: 'only' | 'forbid';
+}) {
   const { user, ready } = useAuth();
 
   if (!ready) {
@@ -32,11 +46,19 @@ function Guard({ children, agents }: { children: ReactNode; agents?: 'only' | 'f
   }
 
   if (agents === 'only' && !isAgent(user)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={isPlatformAdmin(user) ? '/platform' : '/'} replace />;
   }
 
   if (agents === 'forbid' && isAgent(user)) {
-    return <Navigate to="/print" replace />;
+    return <Navigate to="/desk" replace />;
+  }
+
+  if (platform === 'only' && !isPlatformAdmin(user)) {
+    return <Navigate to={isAgent(user) ? '/desk' : '/'} replace />;
+  }
+
+  if (platform === 'forbid' && isPlatformAdmin(user)) {
+    return <Navigate to="/platform" replace />;
   }
 
   return children;
@@ -56,15 +78,23 @@ export function App() {
         <Route
           index
           element={
-            <Guard agents="forbid">
+            <Guard agents="forbid" platform="forbid">
               <DashboardPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="customers"
+          element={
+            <Guard agents="forbid" platform="forbid">
+              <CustomersPage />
             </Guard>
           }
         />
         <Route
           path="sessions"
           element={
-            <Guard agents="forbid">
+            <Guard agents="forbid" platform="forbid">
               <SessionsPage />
             </Guard>
           }
@@ -72,7 +102,7 @@ export function App() {
         <Route
           path="plans"
           element={
-            <Guard agents="forbid">
+            <Guard agents="forbid" platform="forbid">
               <PlansPage />
             </Guard>
           }
@@ -80,40 +110,80 @@ export function App() {
         <Route
           path="batches"
           element={
-            <Guard agents="forbid">
+            <Guard agents="forbid" platform="forbid">
               <BatchesPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="agents"
+          element={
+            <Guard agents="forbid" platform="forbid">
+              <AgentsPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="sites"
+          element={
+            <Guard agents="forbid" platform="forbid">
+              <SitesPage />
             </Guard>
           }
         />
         <Route
           path="routers"
           element={
-            <Guard agents="forbid">
+            <Guard agents="forbid" platform="forbid">
               <RoutersPage />
             </Guard>
           }
         />
         <Route
-          path="devices"
+          path="collections"
           element={
-            <Guard agents="forbid">
-              <DevicesPage />
+            <Guard agents="forbid" platform="forbid">
+              <CollectionsPage />
             </Guard>
           }
         />
         <Route
-          path="reports"
+          path="campaigns"
           element={
-            <Guard agents="forbid">
-              <ReportsPage />
+            <Guard agents="forbid" platform="forbid">
+              <CampaignsPage />
             </Guard>
           }
         />
         <Route
-          path="print"
+          path="settings"
+          element={
+            <Guard agents="forbid" platform="forbid">
+              <SettingsPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="desk"
           element={
             <Guard agents="only">
-              <AgentPrintPage />
+              <AgentDeskPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="platform"
+          element={
+            <Guard platform="only">
+              <PlatformPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="platform/invoices"
+          element={
+            <Guard platform="only">
+              <PlatformInvoicesPage />
             </Guard>
           }
         />

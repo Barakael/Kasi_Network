@@ -41,6 +41,7 @@ final readonly class PortalToken
         ?NasDevice $nasDevice = null,
         ?string $clientMac = null,
         ?string $clientIp = null,
+        ?int $customerId = null,
     ): string {
         return Crypt::encryptString(json_encode([
             't' => $site->tenant_id,
@@ -48,8 +49,20 @@ final readonly class PortalToken
             'n' => $nasDevice?->id,
             'm' => $clientMac,
             'i' => $clientIp,
+            'c' => $customerId,
             'x' => now()->addSeconds(self::TTL_SECONDS)->getTimestamp(),
         ], JSON_THROW_ON_ERROR));
+    }
+
+    public function reissue(PortalContext $context, ?int $customerId = null): string
+    {
+        return $this->issue(
+            site: $context->site,
+            nasDevice: $context->nasDevice,
+            clientMac: $context->clientMac,
+            clientIp: $context->clientIp,
+            customerId: $customerId ?? $context->customerId,
+        );
     }
 
     /**
@@ -103,6 +116,7 @@ final readonly class PortalToken
                 nasDevice: $nasDevice,
                 clientMac: is_string($payload['m'] ?? null) ? $payload['m'] : null,
                 clientIp: is_string($payload['i'] ?? null) ? $payload['i'] : null,
+                customerId: is_numeric($payload['c'] ?? null) ? (int) $payload['c'] : null,
             );
         });
     }

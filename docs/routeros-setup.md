@@ -6,7 +6,7 @@ Use the snippet the console generates for a NAS (`Routers → Snippet`). It is a
 
 ```
 /radius
-add address=<kasi-radius-host> secret="<shared-secret>" service=hotspot \
+add address=<kasi-radius-ip> secret="<shared-secret>" service=hotspot \
     authentication-port=1812 accounting-port=1813 timeout=3000ms
 
 /radius incoming
@@ -28,18 +28,19 @@ set [find] use-radius=yes radius-accounting=yes radius-interim-update=5m \
 
 `radius-mac-format` must match `kasi.radius.mac_format` (default `XX:XX:XX:XX:XX:XX`). A mismatch makes MAC binding fail silently.
 
-`mac-cookie` lets a phone that already paid reconnect without typing the voucher. Bound TVs authenticate as their MAC; FreeRADIUS rewrites that User-Name onto the parent voucher, scoped by NAS-IP-Address, so two operators never collide on the same physical device.
+`mac-cookie` lets a phone that already paid reconnect without typing the voucher. Bound TVs authenticate as their MAC; FreeRADIUS rewrites that User-Name onto the parent voucher, scoped by the NAS the request arrived on (packet source, `NAS-IP-Address`, or the router's LAN `api_host` after NAT), so two operators never collide on the same physical device.
+
+`nasname` in the console is the public IP FreeRADIUS sees. Do not set `/radius src-address` to a private LAN address.
 
 Interim updates of 2 minutes are pushed per-voucher via `Acct-Interim-Interval` for data-capped bundles (5 minutes for time-only). The profile default of 5m is the fallback.
 
 ## Walled garden
 
-Allow the portal and API hosts before authentication:
+Allow the portal host before authentication. Portal and API share one hostname:
 
 ```
 /ip hotspot walled-garden
-add dst-host=portal.example.com comment="Kasi portal"
-add dst-host=api.example.com comment="Kasi API"
+add dst-host=net.wayda.co.tz comment="Kasi portal"
 ```
 
 ## Captive portal (Windows + phones)

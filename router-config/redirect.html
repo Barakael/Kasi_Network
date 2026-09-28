@@ -1,131 +1,27 @@
-$(if http-status == 302)
-Location: $(link-login-only)
-$(endif)
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=$(link-login-only)">
-  <title>Kasi WiFi</title>
-  <script src="/md5.js"></script>
-  <style>
-    html { color-scheme: light only; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      padding: 20px 16px;
-      background: #e8eef6;
-      color: #0b1220;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    }
-    .card {
-      width: 100%;
-      max-width: 22rem;
-      margin: 0 auto;
-      background: #fff;
-      border: 1px solid #cbd5e1;
-      border-radius: 16px;
-      padding: 22px 18px 18px;
-    }
-    h1 { margin: 0; font-size: 1.35rem; text-align: center; }
-    .lead { margin: 8px 0 0; text-align: center; color: #334155; font-size: 0.95rem; line-height: 1.4; }
-    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 18px 0 14px; }
-    .tabs button {
-      min-height: 44px;
-      border-radius: 10px;
-      border: 2px solid #1d4ed8;
-      background: #fff;
-      color: #1d4ed8;
-      font-weight: 800;
-    }
-    .tabs button.on { background: #1d4ed8; color: #fff; }
-    .panel { display: none; }
-    .panel.on { display: block; }
-    .pkg {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px 0;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .pkg b { display: block; }
-    .pkg span { color: #475569; font-size: 0.82rem; }
-    .price { font-weight: 800; color: #1d4ed8; white-space: nowrap; }
-    label { display: block; margin: 10px 0 6px; font-size: 0.9rem; font-weight: 650; }
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      min-height: 44px;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      padding: 0 12px;
-      font: inherit;
-      font-family: ui-monospace, Consolas, monospace;
-    }
-    .go {
-      display: block;
-      width: 100%;
-      margin-top: 12px;
-      min-height: 48px;
-      border: 0;
-      border-radius: 12px;
-      background: #1d4ed8;
-      color: #fff;
-      font-weight: 800;
-      font-size: 1.05rem;
-    }
-    .note { margin: 12px 0 0; color: #64748b; font-size: 0.8rem; line-height: 1.4; text-align: center; }
-  </style>
+  <title>Kasi</title>
 </head>
 <body>
-  <div class="card">
-    <h1>Kasi Demo WiFi</h1>
-    <p class="lead">Chagua Paketi au weka voucher hapa. Usitarajie ukurasa wa Microsoft.</p>
-    <div class="tabs">
-      <button type="button" id="tab-p" class="on" onclick="show('p')">Paketi</button>
-      <button type="button" id="tab-v" onclick="show('v')">Voucher</button>
-    </div>
-    <div id="p" class="panel on">
-      <div class="pkg"><div><b>Saa Moja</b><span>1 hour · unlimited</span></div><div class="price">TZS 500</div></div>
-      <div class="pkg"><div><b>Siku Moja</b><span>24 hours · unlimited</span></div><div class="price">TZS 1,500</div></div>
-      <div class="pkg"><div><b>Masaa 10</b><span>10 hours in 30 days</span></div><div class="price">TZS 6,000</div></div>
-      <div class="pkg"><div><b>Wiki Moja</b><span>7 days · 10 GB</span></div><div class="price">TZS 7,000</div></div>
-      <div class="pkg"><div><b>Mwezi Mmoja</b><span>30 days · 50 GB</span></div><div class="price">TZS 25,000</div></div>
-      <p class="note">Lipa kwa mhudumu, kisha gusa Voucher na andika namba ya kadi.</p>
-    </div>
-    <div id="v" class="panel">
-      <form onsubmit="return doLogin(event)">
-        <label for="user">Namba ya voucher</label>
-        <input id="user" name="username" maxlength="32" autocapitalize="characters" autocomplete="off" placeholder="XXXXX-XXXXX" required>
-        <button class="go" type="submit">Pokea Wi-Fi</button>
-      </form>
-    </div>
-  </div>
-  <form name="sendin" action="$(link-login-only)" method="post" style="display:none">
-    <input type="hidden" name="username">
-    <input type="hidden" name="password">
-    <input type="hidden" name="dst" value="$(link-orig)">
-    <input type="hidden" name="popup" value="true">
-  </form>
   <script>
-    location.replace("$(link-login-only)");
-    function show(which) {
-      document.getElementById('p').className = which === 'p' ? 'panel on' : 'panel';
-      document.getElementById('v').className = which === 'v' ? 'panel on' : 'panel';
-      document.getElementById('tab-p').className = which === 'p' ? 'on' : '';
-      document.getElementById('tab-v').className = which === 'v' ? 'on' : '';
+    var err = "$(error)";
+    var params = new URLSearchParams({
+      site: "kasi-demo-site-1",
+      view: "packages",
+      mac: "$(mac)",
+      ip: "$(ip)",
+      link_login: "$(link-login-only)",
+      link_orig: "$(link-orig)",
+      chap_id: "$(chap-id)",
+      chap_challenge: "$(chap-challenge)"
+    });
+    if (err && err.indexOf("$(") === -1) {
+      params.set("error", err);
     }
-    function doLogin(ev) {
-      ev.preventDefault();
-      var code = document.getElementById('user').value.replace(/\s+/g, '').toUpperCase();
-      document.sendin.username.value = code;
-      document.sendin.password.value = (typeof hexMD5 === 'function')
-        ? hexMD5('$(chap-id)' + code + '$(chap-challenge)')
-        : code;
-      document.sendin.submit();
-      return false;
-    }
+    window.location.replace("https://net.wayda.co.tz/?" + params.toString());
   </script>
 </body>
 </html>

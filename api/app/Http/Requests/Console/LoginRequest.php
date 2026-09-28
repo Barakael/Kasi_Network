@@ -21,6 +21,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string'],
+            'two_factor_code' => ['nullable', 'string', 'max:8'],
             /*
              * Names the issued token so an operator can see and revoke
              * "Neema's phone" from the console.

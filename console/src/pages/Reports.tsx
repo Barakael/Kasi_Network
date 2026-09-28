@@ -12,7 +12,7 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Paid mobile-money orders and daily totals." />
+      <PageHeader title="Reports" subtitle="Used vouchers and daily totals." />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Revenue by day</h2>

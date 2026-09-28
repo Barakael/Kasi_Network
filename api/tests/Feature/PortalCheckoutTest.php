@@ -25,7 +25,7 @@ class PortalCheckoutTest extends TestCase
             'is_sold_online' => true,
         ]);
 
-        $token = $this->postJson('/api/portal/bootstrap', ['site' => 'site-abc'])->json('token');
+        $token = $this->identifiedPortalToken('site-abc');
 
         $this->withHeader('X-Kasi-Portal-Token', $token)
             ->postJson('/api/portal/checkout', ['plan_id' => $plan->id])
