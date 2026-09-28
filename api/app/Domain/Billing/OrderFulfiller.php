@@ -7,6 +7,7 @@ namespace App\Domain\Billing;
 use App\Domain\Radius\RadiusProvisioner;
 use App\Domain\Support\MacAddress;
 use App\Domain\Voucher\VoucherIssuer;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,15 @@ final readonly class OrderFulfiller
                 'status' => OrderStatus::Fulfilled,
                 'fulfilled_at' => now(),
             ]);
+
+            $customer = Customer::withoutTenantScope()
+                ->where('tenant_id', $order->tenant_id)
+                ->where('phone', $order->phone)
+                ->first();
+
+            if ($customer instanceof Customer) {
+                $voucher->update(['customer_id' => $customer->id]);
+            }
 
             return $order->fresh(['voucher', 'plan']);
         });
