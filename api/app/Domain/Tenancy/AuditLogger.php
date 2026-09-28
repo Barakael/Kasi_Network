@@ -33,6 +33,7 @@ final readonly class AuditLogger
         'api_password',
         'snippe_api_key',
         'snippe_webhook_secret',
+        'palmpesa_api_token',
         'webhook_secret',
     ];
 
