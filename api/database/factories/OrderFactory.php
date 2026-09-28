@@ -80,4 +80,15 @@ class OrderFactory extends Factory
             'expires_at' => now()->subHour(),
         ]);
     }
+
+    /**
+     * A PalmPesa USSD push is out and the customer has a prompt open.
+     */
+    public function awaitingPalmPesa(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'status' => OrderStatus::AwaitingPayment,
+            'palmpesa_order_id' => fake()->numerify('########'),
+        ]);
+    }
 }
