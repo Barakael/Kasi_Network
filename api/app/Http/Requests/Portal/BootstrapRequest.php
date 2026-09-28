@@ -47,6 +47,7 @@ class BootstrapRequest extends FormRequest
 
             // $(server-name): which hotspot server on the router served the page.
             'server_name' => ['nullable', 'string', 'max:64'],
+            'phone' => ['nullable', 'string', 'max:20'],
         ];
     }
 }
