@@ -29,6 +29,11 @@ class WaydaCommercialPlansSeeder extends Seeder
 
     public function seedFor(Tenant $tenant): void
     {
+        Plan::withTrashed()
+            ->where('tenant_id', $tenant->id)
+            ->where('name', 'Masaa 4')
+            ->update(['name' => 'Test bundle']);
+
         foreach ($this->plans() as $attributes) {
             $plan = Plan::withTrashed()->updateOrCreate(
                 ['tenant_id' => $tenant->id, 'name' => $attributes['name']],
@@ -62,13 +67,13 @@ class WaydaCommercialPlansSeeder extends Seeder
 
         return [
             [
-                'name' => 'Masaa 4',
-                'description' => 'Unlimited Wi-Fi for 4 hours',
+                'name' => 'Test bundle',
+                'description' => 'Unlimited Wi-Fi for 2 hours',
                 'billing_period' => BillingPeriod::Custom,
-                'validity_seconds' => 14_400,
+                'validity_seconds' => 7_200,
                 'duration_seconds' => null,
                 'data_cap_bytes' => null,
-                'price_minor' => 500,
+                'price_minor' => 200,
                 'rate_limit_down_kbps' => $silentKbps,
                 'rate_limit_up_kbps' => $silentKbps,
                 'device_limit' => 1,
