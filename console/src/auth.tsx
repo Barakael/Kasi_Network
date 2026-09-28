@@ -4,7 +4,7 @@ import { api, hasToken, setToken, type User } from './api';
 type AuthValue = {
   user: User | null;
   ready: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, twoFactorCode?: string) => Promise<User>;
   logout: () => Promise<void>;
 };
 
@@ -30,8 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       ready,
-      login: async (email, password) => {
-        const result = await api.login(email, password);
+      login: async (email, password, twoFactorCode) => {
+        const result = await api.login(email, password, twoFactorCode);
         setToken(result.token);
         setUser(result.user);
         return result.user;
@@ -58,4 +58,8 @@ export function useAuth(): AuthValue {
 
 export function isAgent(user: User | null): boolean {
   return user?.role === 'agent';
+}
+
+export function isPlatformAdmin(user: User | null): boolean {
+  return user?.role === 'platform_admin';
 }
