@@ -48,6 +48,15 @@ class SessionController
             ->where('acctuniqueid', $validated['acctuniqueid'])
             ->firstOrFail();
 
+        if ($request->user()?->isAgent()) {
+            $ips = NasDevice::query()
+                ->whereIn('site_id', $request->user()->sites()->pluck('sites.id'))
+                ->get()
+                ->flatMap(fn (NasDevice $d) => array_filter([$d->nasname, $d->api_host]));
+
+            abort_unless($ips->contains($session->nasipaddress), 403);
+        }
+
         $nas = NasDevice::query()->forRadiusIp($session->nasipaddress)->first();
 
         $kicked = false;
