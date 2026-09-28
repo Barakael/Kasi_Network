@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * A sellable bundle.
@@ -58,6 +59,9 @@ class Plan extends Model
         'is_active',
         'is_sold_online',
         'sort_order',
+        'default_price_minor',
+        'offer_label',
+        'offer_ends_at',
     ];
 
     /**
@@ -70,6 +74,7 @@ class Plan extends Model
             'on_quota_exhausted' => QuotaAction::class,
             'is_active' => 'boolean',
             'is_sold_online' => 'boolean',
+            'offer_ends_at' => 'datetime',
         ];
     }
 
@@ -138,5 +143,40 @@ class Plan extends Model
             'device_limit' => $this->device_limit,
             'price_minor' => $this->price_minor,
         ];
+    }
+
+    public function hasActiveOffer(): bool
+    {
+        return filled($this->offer_label)
+            && $this->offer_ends_at !== null
+            && $this->offer_ends_at->isFuture();
+    }
+
+    public function restoreDefaultPrice(): void
+    {
+        if ($this->default_price_minor === null) {
+            $this->update([
+                'offer_label' => null,
+                'offer_ends_at' => null,
+            ]);
+
+            return;
+        }
+
+        $this->update([
+            'price_minor' => $this->default_price_minor,
+            'offer_label' => null,
+            'offer_ends_at' => null,
+        ]);
+    }
+
+    public function applyOffer(int $priceMinor, string $label, Carbon $endsAt): void
+    {
+        $this->update([
+            'default_price_minor' => $this->default_price_minor ?? $this->price_minor,
+            'price_minor' => $priceMinor,
+            'offer_label' => $label,
+            'offer_ends_at' => $endsAt,
+        ]);
     }
 }
