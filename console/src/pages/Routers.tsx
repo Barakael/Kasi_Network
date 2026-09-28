@@ -147,6 +147,7 @@ export function RoutersPage() {
                 <p className="font-semibold">{router.name}</p>
                 <p className="text-sm text-ink-700">
                   {router.nasname} · {router.site?.name}
+                  {router.router_quiet ? ' · router kimya' : ''}
                 </p>
                 <form
                   className="mt-2 flex flex-wrap items-end gap-2"
