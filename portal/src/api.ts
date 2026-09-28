@@ -3,6 +3,7 @@ export type Branding = {
   primary_color: string | null;
   support_phone: string | null;
   currency: string;
+  logo_url: string | null;
 };
 
 export type Plan = {
@@ -38,10 +39,13 @@ export type RedeemResult = {
 
 export type Bootstrap = {
   token: string;
+  needs_phone?: boolean;
   site: { name: string; ssid: string | null };
   branding: Branding;
-  client: { mac: string | null; mac_known: boolean };
+  client: { mac: string | null; mac_known: boolean; phone?: string | null };
   capabilities: { online_payments: boolean; demo_checkout: boolean; device_discovery: boolean };
+  campaign?: { title: string; body: string | null } | null;
+  unused_voucher?: { display_code: string; plan: string | null } | null;
   plans: Plan[];
 };
 
@@ -86,6 +90,13 @@ export const portalApi = {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(payload),
+    }).then((res) => parse<Bootstrap>(res)),
+
+  identify: (token: string, phone: string) =>
+    fetch('/api/portal/identify', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ phone }),
     }).then((res) => parse<Bootstrap>(res)),
 
   redeem: (token: string, code: string) =>
