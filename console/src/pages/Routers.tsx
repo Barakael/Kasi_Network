@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { api } from '../api';
-import { Badge, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+import { Badge, Callout, Card, Empty, ErrorBanner, Field, Guide, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
 
 export function RoutersPage() {
   const client = useQueryClient();
@@ -9,18 +10,8 @@ export function RoutersPage() {
   const routers = useQuery({ queryKey: ['nas'], queryFn: api.nasDevices });
   const [error, setError] = useState<string | null>(null);
   const [snippet, setSnippet] = useState<{ name: string; rsc: string; login_html: string } | null>(null);
-  const [siteForm, setSiteForm] = useState({ name: '', ssid: '', nas_identifier: '' });
   const [nasForm, setNasForm] = useState({ site_id: '', name: '', nasname: '', api_host: '', shared_secret: '' });
   const [nasnameEdits, setNasnameEdits] = useState<Record<number, string>>({});
-
-  const createSite = useMutation({
-    mutationFn: () => api.createSite(siteForm),
-    onSuccess: () => {
-      setSiteForm({ name: '', ssid: '', nas_identifier: '' });
-      void client.invalidateQueries({ queryKey: ['sites'] });
-    },
-    onError: (err: Error) => setError(err.message),
-  });
 
   const createNas = useMutation({
     mutationFn: () =>
@@ -34,6 +25,7 @@ export function RoutersPage() {
     onSuccess: () => {
       setNasForm({ ...nasForm, name: '', nasname: '', api_host: '', shared_secret: '' });
       void client.invalidateQueries({ queryKey: ['nas'] });
+      void client.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -63,38 +55,26 @@ export function RoutersPage() {
     URL.revokeObjectURL(url);
   }
 
+  const siteCount = sites.data?.data.length ?? 0;
+  const quietCount = (routers.data?.data ?? []).filter((row) => row.router_quiet).length;
+
   return (
     <div>
-      <PageHeader title="Routers" subtitle="Onboard a MikroTik with a generated .rsc snippet and login.html." />
+      <PageHeader title="Routers" subtitle="MikroTik moja kwa site. Pakua snippet + login.html, kisha RADIUS inaweza kuona simu." />
       <ErrorBanner message={error} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">New site</h2>
+      {sites.isSuccess && siteCount === 0 && (
+        <Guide title="Weka site kwanza" body="Router inahitaji shop. Tengeneza site, kisha rudi hapa kuongeza MikroTik." to="/sites" cta="Add site" />
+      )}
+      {quietCount > 0 && (
+        <Callout tone="amber">
+          {quietCount} router {quietCount === 1 ? 'iko' : 'ziko'} kimya — RADIUS haijaona paketi. Angalia IP, shared secret, na snippet.
+        </Callout>
+      )}
+      {siteCount > 0 && (
+        <Card className="mb-4">
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">MikroTik mpya</h2>
           <form
-            className="space-y-3"
-            onSubmit={(event: FormEvent) => {
-              event.preventDefault();
-              createSite.mutate();
-            }}
-          >
-            <Field label="Name">
-              <input className={inputClass} value={siteForm.name} onChange={(e) => setSiteForm({ ...siteForm, name: e.target.value })} required />
-            </Field>
-            <Field label="SSID">
-              <input className={inputClass} value={siteForm.ssid} onChange={(e) => setSiteForm({ ...siteForm, ssid: e.target.value })} />
-            </Field>
-            <Field label="NAS-Identifier">
-              <input className={inputClass} value={siteForm.nas_identifier} onChange={(e) => setSiteForm({ ...siteForm, nas_identifier: e.target.value })} required />
-            </Field>
-            <button type="submit" className={primaryBtn} disabled={createSite.isPending}>
-              Save site
-            </button>
-          </form>
-        </Card>
-        <Card>
-          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">New router</h2>
-          <form
-            className="space-y-3"
+            className="grid gap-3 sm:grid-cols-2"
             onSubmit={(event: FormEvent) => {
               event.preventDefault();
               createNas.mutate();
@@ -102,7 +82,7 @@ export function RoutersPage() {
           >
             <Field label="Site">
               <select className={inputClass} value={nasForm.site_id} onChange={(e) => setNasForm({ ...nasForm, site_id: e.target.value })} required>
-                <option value="">Select…</option>
+                <option value="">Chagua site…</option>
                 {(sites.data?.data ?? []).map((site) => (
                   <option key={site.id} value={site.id}>
                     {site.name}
@@ -110,7 +90,7 @@ export function RoutersPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Name">
+            <Field label="Jina">
               <input className={inputClass} value={nasForm.name} onChange={(e) => setNasForm({ ...nasForm, name: e.target.value })} required />
             </Field>
             <Field label="RADIUS source IP">
@@ -118,11 +98,11 @@ export function RoutersPage() {
                 className={inputClass}
                 value={nasForm.nasname}
                 onChange={(e) => setNasForm({ ...nasForm, nasname: e.target.value })}
-                placeholder="Public IP FreeRADIUS sees"
+                placeholder="Public IP FreeRADIUS inaona"
                 required
               />
             </Field>
-            <Field label="Hotspot LAN IP (optional)">
+            <Field label="Hotspot LAN IP (si lazima)">
               <input
                 className={inputClass}
                 value={nasForm.api_host}
@@ -130,16 +110,18 @@ export function RoutersPage() {
                 placeholder="192.168.10.212"
               />
             </Field>
-            <Field label="Shared secret (blank to generate)">
+            <Field label="Shared secret (wazi = generate)">
               <input className={inputClass} value={nasForm.shared_secret} onChange={(e) => setNasForm({ ...nasForm, shared_secret: e.target.value })} />
             </Field>
-            <button type="submit" className={primaryBtn} disabled={createNas.isPending}>
-              Save router
-            </button>
+            <div className="flex items-end">
+              <button type="submit" className={primaryBtn} disabled={createNas.isPending}>
+                Save router
+              </button>
+            </div>
           </form>
         </Card>
-      </div>
-      <div className="mt-4 space-y-3">
+      )}
+      <div className="space-y-3">
         {(routers.data?.data ?? []).map((router) => (
           <Card key={router.id}>
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -174,7 +156,9 @@ export function RoutersPage() {
                 </form>
               </div>
               <div className="flex items-center gap-2">
-                <Badge tone={router.status === 'active' ? 'green' : 'slate'}>{router.status}</Badge>
+                <Badge tone={router.router_quiet ? 'amber' : router.status === 'active' ? 'green' : 'slate'}>
+                  {router.router_quiet ? 'Kimya' : router.status}
+                </Badge>
                 <button type="button" className={secondaryBtn} onClick={() => void loadSnippet(router.id, router.name)}>
                   Snippet
                 </button>
@@ -183,11 +167,13 @@ export function RoutersPage() {
           </Card>
         ))}
       </div>
-      {!routers.data?.data.length && <Empty>{routers.isLoading ? 'Loading routers…' : 'No routers yet.'}</Empty>}
+      {!routers.data?.data.length && siteCount > 0 && (
+        <Empty>{routers.isLoading ? 'Inapakia routers…' : 'Hakuna MikroTik bado — jaza fomu hapo juu.'}</Empty>
+      )}
       {snippet && (
         <Card className="mt-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold">Onboarding for {snippet.name}</h2>
+            <h2 className="font-semibold">Onboarding: {snippet.name}</h2>
             <div className="flex gap-2">
               <button type="button" className={primaryBtn} onClick={() => download(snippet.rsc, `${snippet.name}.rsc`)}>
                 Download .rsc
@@ -197,6 +183,13 @@ export function RoutersPage() {
               </button>
             </div>
           </div>
+          <p className="mb-2 text-sm text-ink-700">
+            Weka faili kwenye MikroTik, kisha rudi{' '}
+            <Link to="/sessions" className="font-semibold text-brand-700 hover:underline">
+              Mtandaoni
+            </Link>{' '}
+            kuona simu.
+          </p>
           <pre className="max-h-80 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{snippet.rsc}</pre>
         </Card>
       )}

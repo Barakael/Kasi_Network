@@ -70,6 +70,7 @@ export type Customer = {
   status: 'hai' | 'kimya';
   site?: Site | null;
   last_mac?: string | null;
+  first_seen_at?: string | null;
   last_seen_at?: string | null;
   last_package?: string | null;
   paid_via?: 'kadi' | 'simu' | null;
@@ -109,16 +110,32 @@ export type Collections = {
   previous_total_minor: number;
   previous_lipia_minor: number;
   previous_kadi_minor: number;
+  series?: { day: string; orders: number; total: number }[];
 };
 
 export type AgentDesk = {
   site: { id: number; name: string; ssid: string | null };
   sites: { id: number; name: string; ssid: string | null }[];
   remaining_cards: number;
-  leo: { kadi_count: number; kadi_minor: number };
+  leo: { kadi_count: number; kadi_minor: number; used_count?: number };
   online: Session[];
   batches: Batch[];
   customers: Customer[];
+  router_quiet?: boolean;
+  last_radius_at?: string | null;
+  hai_count?: number;
+  kimya_count?: number;
+  week?: { kadi_count: number; kadi_minor: number };
+  previous_week?: { kadi_count: number; kadi_minor: number };
+  series?: { day: string; orders: number; total: number }[];
+};
+
+export type PlatformOverview = {
+  operators_active: number;
+  operators_suspended: number;
+  lipia_on: number;
+  invoices_open: number;
+  invoices_paid: number;
 };
 
 export type Batch = {
@@ -195,6 +212,90 @@ export type Dashboard = {
   unused_cards?: number;
   router_quiet?: boolean;
   last_radius_at?: string | null;
+  week_minor?: number;
+  previous_week_minor?: number;
+  week_lipia_minor?: number;
+  week_kadi_minor?: number;
+  hai_count?: number;
+  kimya_count?: number;
+};
+
+export type Insights = {
+  period: string;
+  from: string;
+  to: string;
+  income: {
+    total_minor: number;
+    lipia_minor: number;
+    kadi_minor: number;
+    lipia_count: number;
+    kadi_count: number;
+    previous_total_minor: number;
+    change_pct: number | null;
+    today_minor: number;
+    month_minor: number;
+    lifetime_minor: number;
+  };
+  customers: {
+    total: number;
+    online_now: number;
+    sessions_open: number;
+    hai: number;
+    kimya: number;
+    new_in_period: number;
+    new_today: number;
+    repeat_buyers: number;
+    idle: number;
+    idle_days: number;
+  };
+  stock: {
+    unused: number;
+    active: number;
+    exhausted: number;
+    disabled: number;
+    expired: number;
+    expired_stored: number;
+    time_up: number;
+    expired_value_minor: number;
+    at_counter: number;
+    at_counter_value_minor: number;
+    in_office: number;
+    expiring_soon: number;
+    expiring_soon_value_minor: number;
+    dead_stock: number;
+    dead_stock_value_minor: number;
+    soon_days: number;
+  };
+  agents: {
+    id: number;
+    name: string;
+    sites: string[];
+    sold_count: number;
+    sold_minor: number;
+    delivered_count: number;
+    delivered_minor: number;
+    stock: number;
+  }[];
+  sites: {
+    id: number;
+    name: string;
+    total_minor: number;
+    lipia_minor: number;
+    kadi_minor: number;
+    online: number;
+    cards_left: number;
+    router_quiet: boolean;
+    routers: number;
+  }[];
+  plans: {
+    id: number;
+    name: string;
+    price_minor: number;
+    kadi_count: number;
+    lipia_count: number;
+    total_minor: number;
+  }[];
+  series: { day: string; orders: number; total: number }[];
 };
 
 export type Paginated<T> = {
@@ -298,6 +399,12 @@ export const api = {
       headers: headers(),
       body: JSON.stringify({ password }),
     }).then((res) => parse<{ two_factor_enabled: boolean }>(res)),
+  changePassword: (currentPassword: string, password: string, passwordConfirmation: string) =>
+    send<{ message: string }>('/api/v1/auth/password', 'POST', {
+      current_password: currentPassword,
+      password,
+      password_confirmation: passwordConfirmation,
+    }),
   dashboard: () => get<Dashboard>('/api/v1/dashboard'),
   sessions: () => get<{ data: Session[] }>('/api/v1/sessions'),
   disconnect: (acctuniqueid: string) =>
@@ -314,6 +421,7 @@ export const api = {
   restorePlanPrice: (id: number) => send<{ data: Plan }>(`/api/v1/plans/${id}/restore-price`, 'POST'),
   batches: () => get<Paginated<Batch>>('/api/v1/voucher-batches'),
   createBatch: (payload: Record<string, unknown>) => send<{ data: Batch }>('/api/v1/voucher-batches', 'POST', payload),
+  updateBatch: (id: number, payload: Record<string, unknown>) => send<{ data: Batch }>(`/api/v1/voucher-batches/${id}`, 'PATCH', payload),
   disableBatch: (id: number, reason: string) =>
     send<{ message: string }>(`/api/v1/voucher-batches/${id}/disable`, 'POST', { reason }),
   sites: () => get<{ data: Site[] }>('/api/v1/sites'),
@@ -352,12 +460,13 @@ export const api = {
     });
     return parse<{ data: Tenant }>(res);
   },
-  customers: (status?: string, siteId?: number) => {
+  customers: (status?: string, siteId?: number, q?: string) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
     if (siteId) params.set('site_id', String(siteId));
-    const q = params.toString();
-    return get<Paginated<Customer>>(`/api/v1/customers${q ? `?${q}` : ''}`);
+    if (q) params.set('q', q);
+    const query = params.toString();
+    return get<Paginated<Customer>>(`/api/v1/customers${query ? `?${query}` : ''}`);
   },
   customer: (id: number) => get<{ data: Customer; unused_voucher: { id: number; plan: string | null } | null }>(`/api/v1/customers/${id}`),
   revealCustomerVoucher: (id: number) => send<{ code: string }>(`/api/v1/customers/${id}/reveal`, 'POST'),
@@ -367,7 +476,9 @@ export const api = {
     if (agentId) params.set('agent_id', String(agentId));
     return get<Collections>(`/api/v1/reports/collections?${params}`);
   },
+  insights: (period: string) => get<Insights>(`/api/v1/reports/insights?period=${period}`),
   agentDesk: (siteId?: number) => get<AgentDesk>(`/api/v1/agent/desk${siteId ? `?site_id=${siteId}` : ''}`),
+  platformOverview: () => get<PlatformOverview>('/api/v1/platform/overview'),
   campaigns: () => get<{ data: Campaign[] }>('/api/v1/campaigns'),
   createCampaign: (payload: Record<string, unknown>) => send<{ data: Campaign }>('/api/v1/campaigns', 'POST', payload),
   invoices: () => get<Paginated<PlatformInvoice>>('/api/v1/billing/invoices'),
@@ -384,9 +495,14 @@ export const api = {
   orders: () => get<Paginated<Order>>('/api/v1/reports/orders'),
 };
 
-export async function openPrintSheet(batchId: number, remaining?: number): Promise<void> {
-  const params = remaining && remaining > 0 ? `?to=${remaining}` : '';
-  const res = await fetch(`/api/print/voucher-batches/${batchId}${params}`, {
+export async function openPrintSheet(batchId: number, count?: number): Promise<void> {
+  const params = new URLSearchParams();
+  if (count && count > 0) {
+    params.set('from', '1');
+    params.set('to', String(count));
+  }
+  const query = params.toString();
+  const res = await fetch(`/api/print/voucher-batches/${batchId}${query ? `?${query}` : ''}`, {
     headers: {
       Accept: 'application/json, text/html',
       ...(token() ? { Authorization: `Bearer ${token()}` } : {}),

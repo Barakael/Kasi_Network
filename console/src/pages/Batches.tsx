@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
-import { api, openPrintSheet, type Batch } from '../api';
-import { Badge, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+import { useMemo, useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
+import { api, openPrintSheet, type Batch, type User } from '../api';
+import { Badge, Callout, Card, Empty, ErrorBanner, Field, Guide, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+
+function agentOnSite(agent: User, siteId: string) {
+  if (!siteId) {
+    return true;
+  }
+  const id = Number(siteId);
+  return (agent.sites ?? []).some((site) => site.id === id) || (agent.site_ids ?? []).includes(id);
+}
 
 export function BatchesPage() {
   const client = useQueryClient();
@@ -11,25 +20,42 @@ export function BatchesPage() {
   const agents = useQuery({ queryKey: ['agents'], queryFn: api.agents });
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ plan_id: '', quantity: 24, site_id: '', assigned_agent_id: '', reference: '' });
+  const [filter, setFilter] = useState<'all' | 'unassigned'>('all');
+
+  const siteAgents = useMemo(
+    () => (agents.data?.data ?? []).filter((agent) => agentOnSite(agent, form.site_id)),
+    [agents.data?.data, form.site_id],
+  );
 
   const create = useMutation({
     mutationFn: () =>
       api.createBatch({
         plan_id: Number(form.plan_id),
         quantity: Number(form.quantity),
-        site_id: form.site_id ? Number(form.site_id) : null,
+        site_id: Number(form.site_id),
         assigned_agent_id: form.assigned_agent_id ? Number(form.assigned_agent_id) : null,
         reference: form.reference || null,
       }),
     onSuccess: () => {
-      setForm({ ...form, reference: '' });
+      setForm({ ...form, reference: '', assigned_agent_id: '' });
       void client.invalidateQueries({ queryKey: ['batches'] });
+      void client.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (err: Error) => setError(err.message),
   });
 
   const disable = useMutation({
     mutationFn: (id: number) => api.disableBatch(id, 'Withdrawn from console'),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['batches'] });
+      void client.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const assign = useMutation({
+    mutationFn: ({ id, assigned_agent_id }: { id: number; assigned_agent_id: number | null }) =>
+      api.updateBatch(id, { assigned_agent_id }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['batches'] }),
     onError: (err: Error) => setError(err.message),
   });
@@ -49,70 +75,169 @@ export function BatchesPage() {
     create.mutate();
   }
 
+  const planCount = plans.data?.data.length ?? 0;
+  const siteCount = sites.data?.data.length ?? 0;
+  const agentCount = agents.data?.data.length ?? 0;
+  const rows = [...(batches.data?.data ?? [])].sort((a, b) => Number(Boolean(a.assigned_agent)) - Number(Boolean(b.assigned_agent)));
+  const visible = filter === 'unassigned' ? rows.filter((row) => !row.assigned_agent && row.status !== 'disabled') : rows;
+  const unassigned = rows.filter((row) => !row.assigned_agent && row.status !== 'disabled').length;
+  const ready = planCount > 0 && siteCount > 0;
+
   return (
     <div>
       <PageHeader
-        title="Vouchers"
-        subtitle="Each row is a print pack. Tap Print voucher cards to open the codes in a new tab, then use the browser print dialog."
+        title="Packs"
+        subtitle="Tengeneza kadi, chagua site, kisha mpe wakala. Yeye anauza kwenye desk — pesa inaingia till yake anapochapisha."
       />
       <ErrorBanner message={error} />
-      <Card className="mb-6">
-        <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">New print pack</h2>
-        <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <Field label="Bundle">
-            <select className={inputClass} value={form.plan_id} onChange={(e) => setForm({ ...form, plan_id: e.target.value })} required>
-              <option value="">Select…</option>
-              {(plans.data?.data ?? []).map((plan) => (
-                <option key={plan.id} value={plan.id}>
-                  {plan.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="How many vouchers">
-            <input className={inputClass} type="number" min={1} max={10000} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
-          </Field>
-          <Field label="Site">
-            <select className={inputClass} value={form.site_id} onChange={(e) => setForm({ ...form, site_id: e.target.value })}>
-              <option value="">Any</option>
-              {(sites.data?.data ?? []).map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Agent">
-            <select className={inputClass} value={form.assigned_agent_id} onChange={(e) => setForm({ ...form, assigned_agent_id: e.target.value })}>
-              <option value="">Unassigned</option>
-              {(agents.data?.data ?? []).map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="flex items-end">
-            <button type="submit" className={primaryBtn} disabled={create.isPending}>
-              {create.isPending ? 'Creating…' : 'Create pack'}
-            </button>
-          </div>
-        </form>
-      </Card>
+      {plans.isSuccess && planCount === 0 && (
+        <Guide title="Hakuna package" body="Bei za kadi zinatoka kwenye Packages. Weka bundle kabla ya kutengeneza pack." to="/plans" cta="Packages" />
+      )}
+      {sites.isSuccess && siteCount === 0 && (
+        <Guide title="Hakuna site" body="Pack inahitaji shop. Weka SSID kwanza, kisha rudi hapa." to="/sites" cta="Add site" />
+      )}
+      {ready && agentCount === 0 && (
+        <Guide
+          title="Hakuna wakala"
+          body="Unaweza kutengeneza pack sasa, lakini desk haiwezi kuuza hadi umwalike wakala na umpe pack hii."
+          to="/agents"
+          cta="Invite agent"
+        />
+      )}
+      {unassigned > 0 && (
+        <Callout tone="brand">
+          {unassigned} pack bado hazijapelekwa counter.{' '}
+          <button type="button" className="font-semibold underline" onClick={() => setFilter('unassigned')}>
+            Onyesha zisizo na wakala
+          </button>
+        </Callout>
+      )}
+      {ready && (
+        <Card className="mb-6">
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Pack mpya</h2>
+          <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Package">
+              <select className={inputClass} value={form.plan_id} onChange={(e) => setForm({ ...form, plan_id: e.target.value })} required>
+                <option value="">Chagua bundle…</option>
+                {(plans.data?.data ?? []).map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Idadi ya kadi">
+              <input
+                className={inputClass}
+                type="number"
+                min={1}
+                max={10000}
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
+              />
+            </Field>
+            <Field label="Site">
+              <select
+                className={inputClass}
+                value={form.site_id}
+                onChange={(e) => setForm({ ...form, site_id: e.target.value, assigned_agent_id: '' })}
+                required
+              >
+                <option value="">Chagua site…</option>
+                {(sites.data?.data ?? []).map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Wakala">
+              <select
+                className={inputClass}
+                value={form.assigned_agent_id}
+                onChange={(e) => setForm({ ...form, assigned_agent_id: e.target.value })}
+                disabled={!form.site_id}
+              >
+                <option value="">Weka baadaye</option>
+                {siteAgents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Kumbukumbu (si lazima)">
+              <input
+                className={inputClass}
+                value={form.reference}
+                onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                placeholder="Kiosk wiki 39"
+              />
+            </Field>
+            <div className="flex items-end">
+              <button type="submit" className={primaryBtn} disabled={create.isPending || !form.plan_id || !form.site_id}>
+                {create.isPending ? 'Inatengeneza…' : 'Tengeneza pack'}
+              </button>
+            </div>
+          </form>
+          {form.site_id && siteAgents.length === 0 && agentCount > 0 && (
+            <p className="mt-3 text-sm text-ink-700">
+              Hakuna wakala kwenye site hii.{' '}
+              <Link to="/agents" className="font-semibold text-brand-700 hover:underline">
+                Pin wakala
+              </Link>
+            </p>
+          )}
+        </Card>
+      )}
+      {rows.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button type="button" className={filter === 'all' ? primaryBtn : secondaryBtn} onClick={() => setFilter('all')}>
+            Zote
+          </button>
+          <button type="button" className={filter === 'unassigned' ? primaryBtn : secondaryBtn} onClick={() => setFilter('unassigned')}>
+            Bila wakala ({unassigned})
+          </button>
+        </div>
+      )}
       <div className="space-y-3">
-        {(batches.data?.data ?? []).map((batch) => (
-          <BatchRow key={batch.id} batch={batch} onPrint={() => void print(batch)} onWithdraw={() => disable.mutate(batch.id)} />
+        {visible.map((batch) => (
+          <BatchRow
+            key={batch.id}
+            batch={batch}
+            agents={agents.data?.data ?? []}
+            onPrint={() => void print(batch)}
+            onWithdraw={() => disable.mutate(batch.id)}
+            onAssign={(assigned_agent_id) => {
+              setError(null);
+              assign.mutate({ id: batch.id, assigned_agent_id });
+            }}
+          />
         ))}
       </div>
-      {!batches.data?.data.length && <Empty>{batches.isLoading ? 'Loading print packs…' : 'No print packs yet.'}</Empty>}
+      {!batches.data?.data.length && <Empty>{batches.isLoading ? 'Inapakia packs…' : 'Hakuna pack bado.'}</Empty>}
+      {batches.data?.data.length && visible.length === 0 && <Empty>Hakuna pack bila wakala.</Empty>}
     </div>
   );
 }
 
-function BatchRow({ batch, onPrint, onWithdraw }: { batch: Batch; onPrint: () => void; onWithdraw: () => void }) {
+function BatchRow({
+  batch,
+  agents,
+  onPrint,
+  onWithdraw,
+  onAssign,
+}: {
+  batch: Batch;
+  agents: User[];
+  onPrint: () => void;
+  onWithdraw: () => void;
+  onAssign: (id: number | null) => void;
+}) {
   const generating = batch.status === 'generating';
   const unused = batch.unused_count;
   const issued = batch.issued_count;
+  const siteAgents = agents.filter((agent) => agentOnSite(agent, String(batch.site?.id ?? '')));
 
   return (
     <Card>
@@ -121,23 +246,38 @@ function BatchRow({ batch, onPrint, onWithdraw }: { batch: Batch; onPrint: () =>
           <p className="text-xs font-semibold tracking-wide text-ink-700 uppercase">Print pack</p>
           <p className="font-semibold text-ink-900">{batch.reference}</p>
           <p className="mt-1 text-sm text-ink-800">
-            {batch.quantity} {batch.plan?.name ?? 'bundle'} voucher{batch.quantity === 1 ? '' : 's'}
-            {batch.site?.name ? ` · ${batch.site.name}` : ''}
-            {batch.assigned_agent?.name ? ` · ${batch.assigned_agent.name}` : ''}
+            {batch.quantity} {batch.plan?.name ?? 'bundle'}
+            {batch.site?.name ? ` · ${batch.site.name}` : ' · hakuna site'}
+            {batch.assigned_agent?.name ? ` · ${batch.assigned_agent.name}` : ' · bado haijapelekwa'}
           </p>
           <p className="mt-1 text-xs text-ink-700">
             {generating
-              ? `Creating ${batch.quantity} voucher codes…`
-              : `${issued ?? batch.quantity} codes in pack · ${unused ?? '—'} still unused · printed ${batch.print_count}×`}
+              ? `Inatengeneza nambari ${batch.quantity}…`
+              : `${issued ?? batch.quantity} kadi · ${unused ?? '—'} hazijauzwa · chapishwa ${batch.print_count}×`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={batch.status === 'ready' ? 'green' : batch.status === 'disabled' ? 'red' : 'amber'}>
             {batch.status_label}
           </Badge>
+          {batch.status !== 'disabled' && (
+            <select
+              className={`${inputClass} w-48`}
+              aria-label="Mpe wakala"
+              value={batch.assigned_agent?.id ?? ''}
+              onChange={(e) => onAssign(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">Bila wakala</option>
+              {siteAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name}
+                </option>
+              ))}
+            </select>
+          )}
           {batch.is_printable && (
-            <button type="button" className={primaryBtn} onClick={onPrint}>
-              Print voucher cards
+            <button type="button" className={secondaryBtn} onClick={onPrint}>
+              Chapisha ofisini
             </button>
           )}
           {batch.status !== 'disabled' && (

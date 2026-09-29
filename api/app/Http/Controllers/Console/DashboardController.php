@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Console;
 
 use App\Domain\Billing\CollectionBook;
 use App\Domain\Billing\RevenueBook;
+use App\Domain\Customers\CustomerDirectory;
+use App\Models\Customer;
 use App\Models\NasDevice;
 use App\Models\RadAcct;
 use App\Models\Voucher;
@@ -14,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 
 class DashboardController
 {
-    public function __invoke(RevenueBook $revenue, CollectionBook $collections): JsonResponse
+    public function __invoke(RevenueBook $revenue, CollectionBook $collections, CustomerDirectory $directory): JsonResponse
     {
         $usernames = VoucherUsage::query()->pluck('username');
 
@@ -26,6 +28,8 @@ class DashboardController
         $monthStart = now()->startOfMonth();
         $now = now();
         $split = $collections->totals($today, $now);
+        $week = $collections->totals(now()->startOfWeek(), $now);
+        $previousWeek = $collections->totals(now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek());
 
         $devices = NasDevice::query()->where('status', 'active')->get();
         $quiet = $devices->contains(fn (NasDevice $device) => $device->isQuiet());
@@ -36,6 +40,8 @@ class DashboardController
             ->last();
 
         $unusedCards = (int) Voucher::query()->available()->whereNotNull('batch_id')->count();
+        $haiCount = $directory->haiIds()->count();
+        $customerTotal = Customer::query()->count();
 
         return response()->json([
             'concurrent_sessions' => $concurrent,
@@ -48,6 +54,12 @@ class DashboardController
             'unused_cards' => $unusedCards,
             'router_quiet' => $devices->isEmpty() ? true : $quiet,
             'last_radius_at' => $lastRadius?->toIso8601String(),
+            'week_minor' => $week['lipia'] + $week['kadi'],
+            'previous_week_minor' => $previousWeek['lipia'] + $previousWeek['kadi'],
+            'week_lipia_minor' => $week['lipia'],
+            'week_kadi_minor' => $week['kadi'],
+            'hai_count' => $haiCount,
+            'kimya_count' => max(0, $customerTotal - $haiCount),
         ]);
     }
 }

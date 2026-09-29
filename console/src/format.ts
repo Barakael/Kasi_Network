@@ -24,6 +24,26 @@ export function duration(seconds: number): string {
   return `${Math.max(1, Math.round(seconds / 60))} min`;
 }
 
+export function ago(iso: string | null | undefined): string {
+  if (!iso) {
+    return 'Hajawahi kuonekana';
+  }
+
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+
+  if (minutes < 1) {
+    return 'Sasa hivi';
+  }
+  if (minutes < 60) {
+    return `Dakika ${minutes} zilizopita`;
+  }
+  if (minutes < 1440) {
+    return `Saa ${Math.round(minutes / 60)} zilizopita`;
+  }
+
+  return `Siku ${Math.round(minutes / 1440)} zilizopita`;
+}
+
 export function clock(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);

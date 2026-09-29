@@ -23,7 +23,7 @@ class CustomerFactory extends Factory
         return [
             'tenant_id' => Tenant::factory(),
             'site_id' => null,
-            'phone' => TanzanianPhone::toE164('07'.fake()->numerify('xxxxxxxx')),
+            'phone' => TanzanianPhone::toE164('07'.fake()->unique()->numerify('########')),
             'first_seen_at' => now(),
             'last_seen_at' => now(),
         ];

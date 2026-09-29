@@ -7,6 +7,8 @@ namespace Tests\Feature;
 use App\Domain\Auth\Totp;
 use App\Domain\Billing\OrderStatus;
 use App\Domain\Tenancy\UserRole;
+use App\Domain\Voucher\BatchStatus;
+use App\Domain\Voucher\VoucherIssuer;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Plan;
@@ -201,7 +203,53 @@ class OperatorShopTest extends TestCase
             ->getJson('/api/v1/agent/desk')
             ->assertOk()
             ->assertJsonPath('site.name', 'Kariakoo')
-            ->assertJsonPath('remaining_cards', 0);
+            ->assertJsonPath('remaining_cards', 0)
+            ->assertJsonCount(14, 'series')
+            ->assertJsonStructure(['week' => ['kadi_count', 'kadi_minor'], 'hai_count', 'kimya_count']);
+    }
+
+    public function test_agent_desk_counts_cash_when_a_card_is_printed(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $site = Site::factory()->for($tenant)->create();
+        $agent = User::factory()->for($tenant)->agent()->create();
+        $agent->sites()->attach($site->id);
+        $plan = Plan::factory()->for($tenant)->create(['price_minor' => 1000]);
+        $batch = VoucherBatch::factory()->for($tenant)->for($plan)->create([
+            'quantity' => 2,
+            'site_id' => $site->id,
+            'assigned_agent_id' => $agent->id,
+            'status' => BatchStatus::Ready,
+        ]);
+
+        $this->actingForTenant($tenant);
+        app(VoucherIssuer::class)->issue($plan, 2, $batch);
+
+        $this->actingAs($agent)
+            ->get('/api/print/voucher-batches/'.$batch->id.'?from=1&to=1')
+            ->assertOk();
+
+        $this->actingAs($agent)
+            ->getJson('/api/v1/agent/desk')
+            ->assertOk()
+            ->assertJsonPath('leo.kadi_minor', 1000)
+            ->assertJsonPath('leo.kadi_count', 1)
+            ->assertJsonPath('leo.used_count', 0)
+            ->assertJsonPath('remaining_cards', 1);
+    }
+
+    public function test_agent_profile_includes_assigned_sites(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $site = Site::factory()->for($tenant)->create(['name' => 'Kariakoo']);
+        $agent = User::factory()->for($tenant)->agent()->create();
+        $agent->sites()->attach($site->id);
+
+        $this->actingAs($agent->fresh())
+            ->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.sites.0.id', $site->id)
+            ->assertJsonPath('data.sites.0.name', 'Kariakoo');
     }
 
     public function test_an_offer_changes_the_live_price_and_can_be_restored(): void
@@ -271,6 +319,13 @@ class OperatorShopTest extends TestCase
             'tenant_id' => $tenant->id,
             'amount_minor' => 25000,
         ]);
+
+        $this->actingAs($admin)
+            ->getJson('/api/v1/platform/overview')
+            ->assertOk()
+            ->assertJsonPath('operators_active', 1)
+            ->assertJsonPath('invoices_open', 1)
+            ->assertJsonMissingPath('revenue_today_minor');
     }
 
     public function test_a_campaign_is_returned_on_the_portal_after_identify(): void

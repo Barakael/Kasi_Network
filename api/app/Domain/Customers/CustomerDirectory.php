@@ -78,6 +78,44 @@ final class CustomerDirectory
             ->pluck('id');
     }
 
+    /**
+     * Customers with a RADIUS session open right now.
+     *
+     * Narrower than Hai: someone holding an unused paid voucher counts as Hai,
+     * but they are not on the radio until they authenticate.
+     *
+     * @return Collection<int, int>
+     */
+    public function onlineIds(?int $siteId = null, ?iterable $siteIds = null): Collection
+    {
+        $usernames = VoucherUsage::query()->pluck('username');
+
+        if ($usernames->isEmpty()) {
+            return collect();
+        }
+
+        $open = RadAcct::query()
+            ->open()
+            ->whereIn('username', $usernames)
+            ->pluck('username')
+            ->unique();
+
+        if ($open->isEmpty()) {
+            return collect();
+        }
+
+        $voucherIds = VoucherUsage::query()->whereIn('username', $open)->pluck('voucher_id');
+
+        return Customer::query()
+            ->when($siteId, fn ($q) => $q->where('site_id', $siteId))
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('site_id', $siteIds))
+            ->whereIn('id', Voucher::query()
+                ->whereIn('id', $voucherIds)
+                ->whereNotNull('customer_id')
+                ->select('customer_id'))
+            ->pluck('id');
+    }
+
     public function unusedPaidVoucher(Customer $customer): ?Voucher
     {
         $order = Order::query()

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { api } from '../api';
-import { Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn } from '../components/ui';
+import { Callout, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn } from '../components/ui';
 import { money } from '../format';
 import { useAuth } from '../auth';
 
@@ -31,8 +32,13 @@ export function SitesPage() {
 
   return (
     <div>
-      <PageHeader title="Sites" subtitle="SSID, agents, and which shop a pack belongs to." />
+      <PageHeader title="Sites" subtitle="Shop: SSID, mawakala, na pack. Weka site kabla ya router au wakala." />
       <ErrorBanner message={error} />
+      {sites.isSuccess && !(sites.data?.data.length) && (
+        <Callout tone="brand">
+          Portal site id ndiyo NAS-Identifier kwenye MikroTik. Baada ya site: ongeza router, kisha mwalike wakala.
+        </Callout>
+      )}
       <Card className="mb-4">
         <form
           className="grid gap-3 sm:grid-cols-3"
@@ -64,7 +70,8 @@ export function SitesPage() {
               <button type="button" className="text-left" onClick={() => setOpenId(openId === site.id ? null : site.id)}>
                 <p className="font-semibold">{site.name}</p>
                 <p className="text-sm text-ink-700">
-                  {site.ssid || 'No SSID'} · {site.nas_devices_count ?? 0} router(s)
+                  {site.ssid || 'Hakuna SSID'} · {site.nas_devices_count ?? 0} router
+                  {(site.agents ?? []).length ? ` · ${(site.agents ?? []).length} wakala` : ' · hakuna wakala'}
                 </p>
               </button>
               <label className="text-sm text-ink-800">
@@ -95,14 +102,28 @@ export function SitesPage() {
                 <p>Routers: {site.nas_devices_count ?? 0}</p>
                 <p>Mtandaoni: {detail.data.online_count}</p>
                 <p>Leo: {money(detail.data.today.total_minor, currency)}</p>
-                <p>Cards left: {detail.data.remaining_cards}</p>
-                {detail.data.router_quiet && <p className="sm:col-span-4 text-amber-800">Router kimya</p>}
+                <p>Kadi zilizobaki: {detail.data.remaining_cards}</p>
+                {detail.data.router_quiet && <p className="sm:col-span-4 text-amber-800">Router kimya — RADIUS haijaona paketi.</p>}
+                {(site.nas_devices_count ?? 0) === 0 && (
+                  <p className="sm:col-span-4">
+                    <Link to="/routers" className="font-semibold text-brand-700 hover:underline">
+                      Ongeza router
+                    </Link>
+                  </p>
+                )}
+                {(site.agents ?? []).length === 0 && (
+                  <p className="sm:col-span-4">
+                    <Link to="/agents" className="font-semibold text-brand-700 hover:underline">
+                      Pin wakala
+                    </Link>
+                  </p>
+                )}
               </div>
             )}
           </Card>
         ))}
       </div>
-      {!sites.data?.data.length && <Empty>{sites.isLoading ? 'Loading…' : 'No sites yet.'}</Empty>}
+      {!sites.data?.data.length && <Empty>{sites.isLoading ? 'Inapakia…' : 'Hakuna site bado — jaza fomu hapo juu.'}</Empty>}
     </div>
   );
 }

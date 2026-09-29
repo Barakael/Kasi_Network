@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Console;
 
 use App\Domain\Billing\CollectionBook;
 use App\Domain\Billing\RevenueBook;
+use App\Domain\Reporting\InsightBook;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
@@ -52,5 +53,22 @@ class ReportController
         }
 
         return response()->json($book->summary($period, $siteId, $agentId));
+    }
+
+    /**
+     * The whole Analytics screen in one response: income, who is online, card
+     * stock, and how each agent, site and bundle is doing.
+     */
+    public function insights(Request $request, InsightBook $book): JsonResponse
+    {
+        abort_unless($request->user()?->managesTenant(), 403);
+
+        $period = $request->string('period')->value();
+
+        if (! in_array($period, ['day', 'week', 'month'], true)) {
+            $period = 'day';
+        }
+
+        return response()->json($book->forPeriod($period));
     }
 }

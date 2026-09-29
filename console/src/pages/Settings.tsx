@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api';
-import { Card, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+import { Callout, Card, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+import { PasswordForm } from '../components/PasswordForm';
 import { useAuth } from '../auth';
 
 export function SettingsPage() {
@@ -14,6 +15,7 @@ export function SettingsPage() {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [disablePassword, setDisablePassword] = useState('');
   const loaded = settings.data?.data;
+  const lipiaOn = Boolean(loaded?.palmpesa_configured || loaded?.accepts_online_payments);
 
   const save = useMutation({
     mutationFn: () =>
@@ -25,6 +27,7 @@ export function SettingsPage() {
     onSuccess: () => {
       setForm({ ...form, palmpesa_api_token: '' });
       void client.invalidateQueries({ queryKey: ['settings'] });
+      void client.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -41,11 +44,16 @@ export function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Portal name, Msaada phone, logo, PalmPesa, and 2FA." />
+      <PageHeader title="Settings" subtitle="Jina la portal, simu ya Msaada, logo, Lipia (PalmPesa), na 2FA." />
       <ErrorBanner message={error} />
+      {loaded && !lipiaOn && (
+        <Callout tone="amber">
+          Lipia haijawekwa — wateja wananunua kadi tu. Weka token ya PalmPesa kwenye kadi ya Lipia hapa chini.
+        </Callout>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Skin</h2>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Portal</h2>
           {loaded?.logo_url && <img src={loaded.logo_url} alt="" className="mb-3 h-16 object-contain" />}
           <form
             className="space-y-3"
@@ -82,10 +90,26 @@ export function SettingsPage() {
                 }}
               />
             </Field>
-            <p className="text-sm text-ink-700">
-              PalmPesa: {loaded?.palmpesa_configured || loaded?.accepts_online_payments ? 'Imewekwa' : 'Haijawekwa'}
-            </p>
-            <Field label="PalmPesa token (leave blank to keep)">
+            <button type="submit" className={primaryBtn} disabled={save.isPending}>
+              Save
+            </button>
+          </form>
+        </Card>
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Lipia (PalmPesa)</h2>
+          <p className="mb-3 text-sm text-ink-700">
+            Token hii inafungua malipo kwenye portal. Bila hiyo, wateja hununua kadi kwa wakala tu. Si token ya bili ya Kasi.
+          </p>
+          <p className="mb-3 text-sm font-medium text-ink-800">{lipiaOn ? 'Imewekwa' : 'Haijawekwa'}</p>
+          <form
+            className="space-y-3"
+            onSubmit={(event: FormEvent) => {
+              event.preventDefault();
+              setError(null);
+              save.mutate();
+            }}
+          >
+            <Field label="PalmPesa token (wazi = usibadilishe)">
               <input
                 className={inputClass}
                 type="password"
@@ -95,7 +119,7 @@ export function SettingsPage() {
               />
             </Field>
             <button type="submit" className={primaryBtn} disabled={save.isPending}>
-              Save
+              Save Lipia
             </button>
           </form>
         </Card>
@@ -107,10 +131,13 @@ export function SettingsPage() {
               onSubmit={(event: FormEvent) => {
                 event.preventDefault();
                 setError(null);
-                void api.disableTwoFactor(disablePassword).then(() => {
-                  setDisablePassword('');
-                  window.location.reload();
-                }).catch((err: Error) => setError(err.message));
+                void api
+                  .disableTwoFactor(disablePassword)
+                  .then(() => {
+                    setDisablePassword('');
+                    window.location.reload();
+                  })
+                  .catch((err: Error) => setError(err.message));
               }}
             >
               <p className="text-sm text-ink-800">Authenticator is on.</p>
@@ -129,7 +156,10 @@ export function SettingsPage() {
                   className={primaryBtn}
                   onClick={() => {
                     setError(null);
-                    void api.startTwoFactor().then((data) => setTwoFactorSvg(data.qr_svg)).catch((err: Error) => setError(err.message));
+                    void api
+                      .startTwoFactor()
+                      .then((data) => setTwoFactorSvg(data.qr_svg))
+                      .catch((err: Error) => setError(err.message));
                   }}
                 >
                   Enable 2FA
@@ -140,7 +170,10 @@ export function SettingsPage() {
                   className="space-y-3"
                   onSubmit={(event: FormEvent) => {
                     event.preventDefault();
-                    void api.confirmTwoFactor(twoFactorCode).then(() => window.location.reload()).catch((err: Error) => setError(err.message));
+                    void api
+                      .confirmTwoFactor(twoFactorCode)
+                      .then(() => window.location.reload())
+                      .catch((err: Error) => setError(err.message));
                   }}
                 >
                   <div className="w-48" dangerouslySetInnerHTML={{ __html: twoFactorSvg }} />
@@ -154,6 +187,10 @@ export function SettingsPage() {
               )}
             </div>
           )}
+        </Card>
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">Nenosiri</h2>
+          <PasswordForm />
         </Card>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api, type Plan } from '../api';
-import { Badge, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+import { Badge, Callout, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
 import { bytes, money } from '../format';
 import { useAuth } from '../auth';
 
@@ -59,12 +59,15 @@ export function PlansPage() {
 
   return (
     <div>
-      <PageHeader title="Packages" subtitle="Prices sold at the portal and on printed cards. Customers never see kbps.">
+      <PageHeader title="Packages" subtitle="Bei za portal (Lipia) na kadi zilizochapishwa. Mteja haoni kbps — wewe tu.">
         <button type="button" className={primaryBtn} onClick={() => setOpen((v) => !v)}>
-          {open ? 'Close' : 'New bundle'}
+          {open ? 'Funga' : 'New bundle'}
         </button>
       </PageHeader>
       <ErrorBanner message={error} />
+      {!plans.isLoading && !(plans.data?.data.length) && !open && (
+        <Callout tone="brand">Bila bundle, portal haina bei na huwezi kutengeneza pack. Bonyeza New bundle hapo juu.</Callout>
+      )}
       {open && (
         <Card className="mb-4">
           <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
@@ -97,7 +100,7 @@ export function PlansPage() {
             </Field>
             <label className="flex items-center gap-2 text-sm text-ink-800">
               <input type="checkbox" checked={form.is_sold_online} onChange={(e) => setForm({ ...form, is_sold_online: e.target.checked })} />
-              Sell online
+              Onyesha kwenye Lipia (portal)
             </label>
             <div className="sm:col-span-2">
               <button type="submit" className={primaryBtn} disabled={create.isPending}>
@@ -117,7 +120,7 @@ export function PlansPage() {
           />
         ))}
       </div>
-      {!plans.data?.data.length && <Empty>{plans.isLoading ? 'Loading bundles…' : 'No bundles yet.'}</Empty>}
+      {!plans.data?.data.length && <Empty>{plans.isLoading ? 'Inapakia bundles…' : 'Hakuna bundle bado.'}</Empty>}
     </div>
   );
 }
@@ -140,6 +143,7 @@ function PlanCard({ plan, currency, onRetire }: { plan: Plan; currency: string; 
       {plan.has_active_offer && <p className="mt-2 text-sm text-amber-800">{plan.offer_label}</p>}
       <p className="mt-2 text-sm text-ink-800">
         {bytes(plan.data_cap_bytes)} · {plan.device_limit} device{plan.device_limit === 1 ? '' : 's'}
+        {plan.is_sold_online === false ? ' · kadi tu' : ' · Lipia + kadi'}
       </p>
       {plan.has_active_offer ? (
         <button

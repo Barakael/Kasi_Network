@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { api } from '../api';
 import { Badge, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn } from '../components/ui';
 
@@ -20,7 +21,10 @@ export function CampaignsPage() {
 
   return (
     <div>
-      <PageHeader title="Notices" subtitle="Ribbon on the portal. Kimya audience is idle phones." />
+      <PageHeader
+        title="Notices"
+        subtitle="Ujumbe kwenye portal. Kimya ni namba zilizonasa bila bundle hai — orodha iko kwenye Wateja."
+      />
       <ErrorBanner message={error} />
       <Card className="mb-4">
         <form
@@ -30,16 +34,16 @@ export function CampaignsPage() {
             create.mutate();
           }}
         >
-          <Field label="Title">
+          <Field label="Kichwa">
             <input className={inputClass} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </Field>
-          <Field label="Body">
+          <Field label="Ujumbe">
             <input className={inputClass} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} required />
           </Field>
-          <Field label="Audience">
+          <Field label="Walengwa">
             <select className={inputClass} value={form.audience} onChange={(e) => setForm({ ...form, audience: e.target.value })}>
-              <option value="all">All</option>
-              <option value="kimya">Kimya only</option>
+              <option value="all">Wote kwenye portal</option>
+              <option value="kimya">Kimya tu</option>
             </select>
           </Field>
           <button type="submit" className={primaryBtn} disabled={create.isPending}>
@@ -54,13 +58,27 @@ export function CampaignsPage() {
               <div>
                 <p className="font-semibold">{row.title}</p>
                 <p className="text-sm text-ink-700">{row.body}</p>
+                <p className="mt-1 text-xs text-ink-700">{row.audience === 'kimya' ? 'Kimya tu' : 'Wote'}</p>
               </div>
               <Badge tone={row.is_live ? 'green' : 'slate'}>{row.is_live ? 'Live' : 'Off'}</Badge>
             </div>
           </Card>
         ))}
       </div>
-      {!campaigns.data?.data.length && <Empty>{campaigns.isLoading ? 'Loading…' : 'No notices yet.'}</Empty>}
+      {!campaigns.data?.data.length && (
+        <Empty>
+          {campaigns.isLoading ? (
+            'Inapakia…'
+          ) : (
+            <>
+              Hakuna notice bado.{' '}
+              <Link to="/customers" className="font-semibold text-brand-700 hover:underline">
+                Wateja Kimya
+              </Link>
+            </>
+          )}
+        </Empty>
+      )}
     </div>
   );
 }

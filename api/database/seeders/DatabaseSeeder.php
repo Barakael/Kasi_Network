@@ -23,14 +23,14 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $tenant = Tenant::firstOrCreate(
-            ['slug' => 'kasi-demo'],
+            ['slug' => 'kasi-WIFI'],
             [
-                'name' => 'Kasi Demo Network',
+                'name' => 'Kasi Network',
                 'code_prefix' => 'KAS',
                 'status' => 'active',
                 'currency' => 'TZS',
                 'timezone' => 'Africa/Dar_es_Salaam',
-                'portal_name' => 'Kasi Demo WiFi',
+                'portal_name' => 'kasi wifi',
                 'primary_color' => '#2563eb',
                 'support_phone' => '255700000000',
             ],

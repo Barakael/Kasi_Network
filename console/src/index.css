@@ -34,6 +34,54 @@ body {
   min-height: 100dvh;
 }
 
+.console-aside {
+  width: 18rem;
+  background: #fff;
+  color: var(--color-ink-900);
+  border-right: 1px solid #e2e8f0;
+}
+
+.console-aside-brand {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.console-aside-title {
+  color: var(--color-ink-900);
+}
+
+.console-aside-muted,
+.console-aside-label {
+  color: var(--color-ink-700);
+}
+
+.console-aside-foot {
+  border-top: 1px solid #e2e8f0;
+}
+
+.console-rail-stat {
+  border-radius: 0.85rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.7rem 0.35rem;
+  text-align: center;
+}
+
+.console-rail-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-ink-900);
+  line-height: 1.1;
+}
+
+.console-rail-label {
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-700);
+}
+
 .console-nav-link {
   display: flex;
   align-items: center;
@@ -77,4 +125,71 @@ body {
 
 .console-table tr:last-child td {
   border-bottom: none;
+}
+
+.agent-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.35rem;
+  border-radius: 0.9rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-ink-800);
+  text-decoration: none;
+}
+
+.agent-nav-link:hover {
+  background: #f8fafc;
+}
+
+.agent-nav-link-on,
+.agent-nav-link-on:hover {
+  background: var(--color-brand-600);
+  color: #fff;
+}
+
+.agent-nav-hint {
+  color: var(--color-ink-700);
+}
+
+.agent-nav-link-on .agent-nav-hint {
+  color: rgb(255 255 255 / 0.8);
+}
+
+.agent-nav-count {
+  min-width: 1.6rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  padding: 0.1rem 0.45rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--color-ink-800);
+}
+
+.agent-nav-link-on .agent-nav-count {
+  background: rgb(255 255 255 / 0.2);
+  color: #fff;
+}
+
+.agent-tab {
+  display: flex;
+  min-height: 3.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 0.75rem;
+  padding: 0.35rem 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-ink-800);
+  text-decoration: none;
+}
+
+.agent-tab .h-5 {
+  height: 1.15rem;
+  width: 1.15rem;
 }

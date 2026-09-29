@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Domain\Billing\TanzanianPhone;
 use App\Domain\Customers\CustomerDirectory;
 use App\Domain\Tenancy\AuditLogger;
 use App\Domain\Voucher\VoucherCard;
@@ -29,12 +30,34 @@ class CustomerController
             siteIds: $siteIds,
         );
 
+        $onlineIds = $status === 'online'
+            ? $directory->onlineIds(
+                siteId: $request->integer('site_id') ?: null,
+                siteIds: $siteIds,
+            )
+            : collect();
+
         $customers = Customer::query()
             ->with('site')
             ->when($siteIds !== null, fn ($q) => $q->whereIn('site_id', $siteIds))
             ->when($request->integer('site_id'), fn ($q) => $q->where('site_id', $request->integer('site_id')))
+            ->when($status === 'online', fn ($q) => $q->whereIn('id', $onlineIds->isEmpty() ? [0] : $onlineIds))
             ->when($status === 'hai', fn ($q) => $q->whereIn('id', $haiIds))
             ->when($status === 'kimya', fn ($q) => $q->whereNotIn('id', $haiIds->isEmpty() ? [0] : $haiIds))
+            ->when($request->filled('q'), function ($query) use ($request): void {
+                $raw = trim($request->string('q')->value());
+                if ($raw === '') {
+                    return;
+                }
+                $digits = TanzanianPhone::toE164($raw);
+                $query->where(function ($inner) use ($raw, $digits): void {
+                    $inner->where('phone', 'like', '%'.$raw.'%')
+                        ->orWhere('last_mac', 'like', '%'.$raw.'%');
+                    if ($digits !== '' && $digits !== $raw) {
+                        $inner->orWhere('phone', 'like', '%'.$digits.'%');
+                    }
+                });
+            })
             ->orderByDesc('last_seen_at')
             ->paginate($request->integer('per_page', 50));
 

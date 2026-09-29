@@ -43,7 +43,17 @@ class AgentDeskController
 
         $remaining = (int) $batches->sum(fn (VoucherBatch $batch) => (int) ($batch->getAttributes()['printable_count'] ?? 0));
 
-        $today = $collections->totals(now()->startOfDay(), now(), $siteId, $user->id);
+        $soldToday = $collections->printedTotals(now()->startOfDay(), now(), $siteId, $user->id);
+        $usedToday = $collections->totals(now()->startOfDay(), now(), $siteId, $user->id);
+        $week = $collections->printedTotals(now()->startOfWeek(), now(), $siteId, $user->id);
+        $previousWeek = $collections->printedTotals(
+            now()->subWeek()->startOfWeek(),
+            now()->subWeek()->endOfWeek(),
+            $siteId,
+            $user->id,
+        );
+        $haiCount = $haiIds->count();
+        $customerTotal = Customer::query()->where('site_id', $siteId)->count();
 
         $nasIps = NasDevice::query()->where('site_id', $siteId)->get()
             ->flatMap(fn (NasDevice $d) => array_filter([$d->nasname, $d->api_host]))
@@ -79,6 +89,14 @@ class AgentDeskController
                 return $directory->decorate($customer);
             });
 
+        $devices = NasDevice::query()->where('site_id', $siteId)->where('status', 'active')->get();
+        $quiet = $devices->isEmpty() || $devices->contains(fn (NasDevice $device) => $device->isQuiet());
+        $lastRadius = $devices
+            ->map(fn (NasDevice $device) => $device->lastRadiusAt())
+            ->filter()
+            ->sort()
+            ->last();
+
         return response()->json([
             'site' => [
                 'id' => $site->id,
@@ -92,12 +110,26 @@ class AgentDeskController
             ])->values(),
             'remaining_cards' => $remaining,
             'leo' => [
-                'kadi_count' => $today['kadi_count'],
-                'kadi_minor' => $today['kadi'],
+                'kadi_count' => $soldToday['kadi_count'],
+                'kadi_minor' => $soldToday['kadi'],
+                'used_count' => $usedToday['kadi_count'],
             ],
             'online' => $online,
             'batches' => VoucherBatchResource::collection($batches),
             'customers' => CustomerResource::collection($customers),
+            'router_quiet' => $quiet,
+            'last_radius_at' => $lastRadius?->toIso8601String(),
+            'hai_count' => $haiCount,
+            'kimya_count' => max(0, $customerTotal - $haiCount),
+            'week' => [
+                'kadi_count' => $week['kadi_count'],
+                'kadi_minor' => $week['kadi'],
+            ],
+            'previous_week' => [
+                'kadi_count' => $previousWeek['kadi_count'],
+                'kadi_minor' => $previousWeek['kadi'],
+            ],
+            'series' => $collections->kadiSeries(now()->subDays(13)->startOfDay(), now(), $siteId, $user->id, 'printed_at'),
         ]);
     }
 }

@@ -7,6 +7,8 @@ namespace App\Domain\Billing;
 use App\Models\Order;
 use App\Models\Voucher;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -51,21 +53,23 @@ final readonly class RevenueBook
             ->get()
             ->keyBy('day');
 
-        return $vouchers->keys()
-            ->merge($orders->keys())
-            ->unique()
-            ->sort()
-            ->values()
-            ->map(function (string $day) use ($vouchers, $orders): array {
-                $voucherRow = $vouchers->get($day);
-                $orderRow = $orders->get($day);
+        $days = collect();
+        $cursor = Carbon::parse($from)->startOfDay();
+        $end = Carbon::parse($to)->startOfDay();
 
-                return [
-                    'day' => $day,
-                    'orders' => (int) ($voucherRow->sales ?? 0) + (int) ($orderRow->sales ?? 0),
-                    'total' => (int) ($voucherRow->total ?? 0) + (int) ($orderRow->total ?? 0),
-                ];
-            });
+        while ($cursor->lte($end)) {
+            $day = $cursor->toDateString();
+            $voucherRow = $vouchers->get($day);
+            $orderRow = $orders->get($day);
+            $days->push([
+                'day' => $day,
+                'orders' => (int) ($voucherRow?->sales ?? 0) + (int) ($orderRow?->sales ?? 0),
+                'total' => (int) ($voucherRow?->total ?? 0) + (int) ($orderRow?->total ?? 0),
+            ]);
+            $cursor->addDay();
+        }
+
+        return $days;
     }
 
     private function voucherSales(DateTimeInterface $from, DateTimeInterface $to): int
@@ -86,9 +90,9 @@ final readonly class RevenueBook
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Order>
+     * @return Builder<Order>
      */
-    private function orderedVoucherIds(): \Illuminate\Database\Eloquent\Builder
+    private function orderedVoucherIds(): Builder
     {
         return Order::query()->whereNotNull('voucher_id')->select('voucher_id');
     }

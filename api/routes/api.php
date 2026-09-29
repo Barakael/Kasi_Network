@@ -47,6 +47,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('auth/me', [AuthController::class, 'me'])->name('auth.me');
+        Route::post('auth/password', [AuthController::class, 'changePassword'])->name('auth.password');
         Route::post('auth/two-factor', [TwoFactorController::class, 'start'])->name('auth.two-factor.start');
         Route::post('auth/two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('auth.two-factor.confirm');
         Route::delete('auth/two-factor', [TwoFactorController::class, 'destroy'])->name('auth.two-factor.destroy');
@@ -81,6 +82,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
 
             Route::get('reports/revenue', [ReportController::class, 'revenue'])->name('reports.revenue');
             Route::get('reports/orders', [ReportController::class, 'orders'])->name('reports.orders');
+            Route::get('reports/insights', [ReportController::class, 'insights'])->name('reports.insights');
 
             Route::get('devices', [VoucherDeviceController::class, 'index'])->name('devices.index');
             Route::post('devices', [VoucherDeviceController::class, 'store'])->name('devices.store');
@@ -114,6 +116,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
         });
 
         Route::middleware('role:platform_admin')->group(function (): void {
+            Route::get('platform/overview', [PlatformTenantController::class, 'overview'])->name('platform.overview');
             Route::get('platform/tenants', [PlatformTenantController::class, 'index'])->name('platform.tenants.index');
             Route::post('platform/tenants', [PlatformTenantController::class, 'store'])->name('platform.tenants.store');
             Route::patch('platform/tenants/{tenant:uuid}', [PlatformTenantController::class, 'update'])->name('platform.tenants.update');

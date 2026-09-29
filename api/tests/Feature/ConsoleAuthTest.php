@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
@@ -204,6 +205,21 @@ class ConsoleAuthTest extends TestCase
     public function test_the_api_requires_authentication(): void
     {
         $this->getJson('/api/v1/auth/me')->assertUnauthorized();
+    }
+
+    public function test_a_user_can_change_their_password(): void
+    {
+        $user = User::factory()->owner()->create();
+
+        $this->actingAs($user)
+            ->postJson('/api/v1/auth/password', [
+                'current_password' => 'password',
+                'password' => 'new-secret-1',
+                'password_confirmation' => 'new-secret-1',
+            ])
+            ->assertOk();
+
+        $this->assertTrue(Hash::check('new-secret-1', $user->fresh()->password));
     }
 
     public function test_signing_in_is_recorded_in_the_audit_log(): void

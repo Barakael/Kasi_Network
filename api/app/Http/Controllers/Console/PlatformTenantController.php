@@ -8,6 +8,7 @@ use App\Domain\Tenancy\AuditLogger;
 use App\Domain\Tenancy\UserRole;
 use App\Http\Resources\TenantResource;
 use App\Http\Resources\UserResource;
+use App\Models\PlatformInvoice;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -88,5 +89,20 @@ class PlatformTenantController
         $audit->record('platform.tenant_updated', $tenant, $validated, $request->user());
 
         return new TenantResource($tenant->fresh());
+    }
+
+    public function overview(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->isPlatformAdmin(), 403);
+
+        $tenants = Tenant::query()->orderBy('name')->get();
+
+        return response()->json([
+            'operators_active' => $tenants->where('status', 'active')->count(),
+            'operators_suspended' => $tenants->where('status', 'suspended')->count(),
+            'lipia_on' => $tenants->filter(fn (Tenant $tenant) => $tenant->palmpesaConfigured())->count(),
+            'invoices_open' => PlatformInvoice::query()->where('status', 'issued')->count(),
+            'invoices_paid' => PlatformInvoice::query()->where('status', 'paid')->count(),
+        ]);
     }
 }

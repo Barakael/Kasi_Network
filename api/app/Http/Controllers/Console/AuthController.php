@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController
 {
@@ -87,7 +88,7 @@ class AuthController
 
         return response()->json([
             'token' => $token->plainTextToken,
-            'user' => new UserResource($user->load('tenant')),
+            'user' => new UserResource($this->consoleUser($user)),
         ]);
     }
 
@@ -100,7 +101,47 @@ class AuthController
 
     public function me(Request $request): UserResource
     {
-        return new UserResource($request->user()->load('tenant'));
+        return new UserResource($this->consoleUser($request->user()));
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:10', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Nenosiri la sasa si sahihi.',
+            ]);
+        }
+
+        $user->forceFill(['password' => $validated['password']])->save();
+
+        $token = $user->currentAccessToken();
+        if ($token instanceof PersonalAccessToken) {
+            $user->tokens()->where('id', '!=', $token->id)->delete();
+        }
+
+        return response()->json(['message' => 'Nenosiri limebadilishwa.']);
+    }
+
+    /**
+     * Agents need assigned sites on every /me so the desk switcher works
+     * without waiting for the first desk payload.
+     */
+    private function consoleUser(User $user): User
+    {
+        $user->load('tenant');
+
+        if ($user->isAgent()) {
+            $user->load('sites');
+        }
+
+        return $user;
     }
 
     /**
