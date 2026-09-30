@@ -4,11 +4,13 @@ import { useAgentDesk } from '../agent/desk';
 import { Card, Empty, ErrorBanner, PageHeader, primaryBtn } from '../components/ui';
 import { money } from '../format';
 import { useAuth } from '../auth';
+import { usePrefs } from '../preferences';
 
 const RevenueChart = lazy(() => import('./RevenueChart'));
 
 export function AgentDeskPage() {
   const { user } = useAuth();
+  const { sw } = usePrefs();
   const { desk, isLoading, error } = useAgentDesk();
   const currency = user?.tenant?.currency ?? 'TZS';
   const nextPack = desk?.batches.find((batch) => batch.is_printable);
@@ -19,57 +21,57 @@ export function AgentDeskPage() {
   return (
     <div>
       <PageHeader
-        title="Live"
-        subtitle={`${desk?.site.name ?? 'Site yako'} — pesa mkononi, kadi, na hali ya radio.`}
+        title={sw('Dashibodi', 'Dashboard')}
+        subtitle={`${desk?.site.name ?? sw('Eneo lako', 'Your site')} — ${sw('pesa mkononi, kadi, na hali ya radio.', 'cash in hand, cards, and the radio.')}`}
       />
       <ErrorBanner message={error?.message ?? null} />
       {desk?.router_quiet && (
         <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
-          Router kimya — RADIUS haijaona paketi kwenye site hii. Vocha inaweza kuwa sawa, radio ndiyo imesimama.
+          {sw('Router kimya — RADIUS haijaona paketi kwenye eneo hili. Vocha inaweza kuwa sawa, radio ndiyo imesimama.', 'The router is quiet — RADIUS has not seen a packet at this site. Vouchers may be fine; the radio is what stopped.')}
         </p>
       )}
       {lowStock && (
         <p className="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700" role="status">
-          Kadi chache: {desk?.remaining_cards} zimebaki. Uza au omba pack mpya.
+          {sw('Kadi chache', 'Few cards left')}: {desk?.remaining_cards} {sw('zimebaki. Uza au omba vocha mpya.', 'left. Sell them or ask for a new pack.')}
         </p>
       )}
       {isLoading && !desk ? (
-        <Empty>Inapakia desk…</Empty>
+        <Empty>{sw('Inapakia desk…', 'Loading the desk…')}</Empty>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Kadi za kuuza" value={String(desk?.remaining_cards ?? '—')} hint="Uza" to="/desk/uza" />
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+            <Stat label={sw('Kadi za kuuza', 'Cards to sell')} value={String(desk?.remaining_cards ?? '—')} hint={sw('Uza', 'Sell')} to="/desk/uza" />
             <Stat
-              label="Leo"
+              label={sw('Leo', 'Today')}
               value={desk ? money(desk.leo.kadi_minor, currency) : '—'}
-              hint={`${desk?.leo.kadi_count ?? 0} zilizouzwa · ${desk?.leo.used_count ?? 0} zimetumika`}
+              hint={`${desk?.leo.kadi_count ?? 0} ${sw('zilizouzwa', 'sold')} · ${desk?.leo.used_count ?? 0} ${sw('zimetumika', 'used')}`}
             />
             <Stat
-              label="Wiki hii"
+              label={sw('Wiki hii', 'This week')}
               value={desk ? money(week, currency) : '—'}
-              hint={previous === 0 ? `${desk?.week?.kadi_count ?? 0} kadi` : `${desk?.week?.kadi_count ?? 0} kadi · vs ${money(previous, currency)}`}
+              hint={previous === 0 ? `${desk?.week?.kadi_count ?? 0} ${sw('kadi', 'cards')}` : `${desk?.week?.kadi_count ?? 0} ${sw('kadi', 'cards')} · vs ${money(previous, currency)}`}
               to="/desk/analytics"
             />
-            <Stat label="Mtandaoni" value={String(desk?.online.length ?? '—')} hint="Kata" to="/desk/online" />
+            <Stat label={sw('Mtandaoni', 'Online')} value={String(desk?.online.length ?? '—')} hint={sw('Kata', 'Disconnect')} to="/desk/wateja" />
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-5">
             <Card className="lg:col-span-3">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold tracking-wide text-ink-700 uppercase">Siku 14 — kadi</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-ink-700 uppercase">{sw('Siku 14 — kadi', '14 days — cards')}</h2>
                 <Link to="/desk/analytics" className="text-sm font-semibold text-brand-700 hover:underline">
-                  Analytics
+                  {sw('Ripoti', 'Reports')}
                 </Link>
               </div>
-              <Suspense fallback={<p className="text-sm text-ink-700">Inapakia chati…</p>}>
-                <RevenueChart series={desk?.series ?? []} currency={currency} empty="Hakuna kadi zilizouzwa katika siku 14." />
+              <Suspense fallback={<p className="text-sm text-ink-700">{sw('Inapakia chati…', 'Loading chart…')}</p>}>
+                <RevenueChart series={desk?.series ?? []} currency={currency} empty={sw('Hakuna kadi zilizouzwa katika siku 14.', 'No cards sold in 14 days.')} />
               </Suspense>
             </Card>
             <Card className="lg:col-span-2">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold tracking-wide text-ink-700 uppercase">Mtandaoni sasa</h2>
-                <Link to="/desk/online" className="text-sm font-semibold text-brand-700 hover:underline">
-                  Orodha
+                <h2 className="text-sm font-semibold tracking-wide text-ink-700 uppercase">{sw('Mtandaoni sasa', 'Online now')}</h2>
+                <Link to="/desk/wateja" className="text-sm font-semibold text-brand-700 hover:underline">
+                  {sw('Orodha', 'List')}
                 </Link>
               </div>
               <ul className="space-y-2">
@@ -80,15 +82,15 @@ export function AgentDeskPage() {
                   </li>
                 ))}
               </ul>
-              {(desk?.online.length ?? 0) === 0 && <Empty>Hakuna aliye mtandaoni.</Empty>}
+              {(desk?.online.length ?? 0) === 0 && <Empty>{sw('Hakuna aliye mtandaoni.', 'Nobody is online.')}</Empty>}
             </Card>
           </div>
 
           <Card className="mt-4">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold tracking-wide text-ink-700 uppercase">Uza sasa</h2>
+              <h2 className="text-sm font-semibold tracking-wide text-ink-700 uppercase">{sw('Uza sasa', 'Sell now')}</h2>
               <Link to="/desk/uza" className="text-sm font-semibold text-brand-700 hover:underline">
-                Packs zote
+                {sw('Vocha', 'Vouchers')}
               </Link>
             </div>
             {nextPack ? (
@@ -98,15 +100,15 @@ export function AgentDeskPage() {
                   <p className="text-sm text-ink-700">
                     {nextPack.plan?.price_minor != null ? money(nextPack.plan.price_minor, currency) : nextPack.reference}
                     {' · '}
-                    {nextPack.printable_count ?? 0} kadi zimebaki
+                    {nextPack.printable_count ?? 0} {sw('kadi zimebaki', 'cards left')}
                   </p>
                 </div>
                 <Link to="/desk/uza" className={primaryBtn}>
-                  Uza kadi
+                  {sw('Uza kadi', 'Sell cards')}
                 </Link>
               </div>
             ) : (
-              <Empty>Bado hujapewa kadi za kuuza kwenye site hii. Omba pack kwa msimamizi.</Empty>
+              <Empty>{sw('Bado hujapewa kadi za kuuza kwenye eneo hili. Omba kwa msimamizi.', 'You have not been given cards to sell at this site. Ask the administrator.')}</Empty>
             )}
           </Card>
         </>
@@ -128,9 +130,9 @@ function Stat({
 }) {
   const body = (
     <Card className={to ? 'transition hover:border-brand-400' : ''}>
-      <p className="text-sm text-ink-700">{label}</p>
-      <p className="mt-1 text-2xl font-bold tracking-tight text-ink-900">{value}</p>
-      {hint && <p className="mt-1 text-sm text-ink-700">{hint}</p>}
+      <p className="text-[11px] leading-tight text-ink-700 sm:text-sm">{label}</p>
+      <p className="mt-0.5 text-base font-bold leading-tight tracking-tight text-ink-900 sm:mt-1 sm:text-2xl">{value}</p>
+      {hint && <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-700 sm:mt-1 sm:text-sm">{hint}</p>}
     </Card>
   );
 
