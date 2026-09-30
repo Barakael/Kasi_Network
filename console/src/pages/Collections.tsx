@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { lazy, Suspense, useState } from 'react';
-import { Link } from 'react-router';
-import { api } from '../api';
-import { Callout, Card, Delta, PageHeader, Segmented, inputClass } from '../components/ui';
+import { api, type Collections } from '../api';
+import { PageHeader, inputClass } from '../components/ui';
 import { money } from '../format';
 import { useAuth } from '../auth';
+import { usePrefs } from '../preferences';
 
 const RevenueChart = lazy(() => import('./RevenueChart'));
 
@@ -12,98 +12,77 @@ type Period = 'day' | 'week' | 'month';
 
 export function CollectionsPage() {
   const { user } = useAuth();
-  const [period, setPeriod] = useState<Period>('day');
+  const { sw } = usePrefs();
+  const periods: { key: Period; label: string }[] = [
+    { key: 'day', label: sw('Leo', 'Today') },
+    { key: 'week', label: sw('Wiki', 'Week') },
+    { key: 'month', label: sw('Mwezi', 'Month') },
+  ];
   const [siteId, setSiteId] = useState('');
+  const [agentId, setAgentId] = useState('');
+  const [focus, setFocus] = useState<Period>('day');
   const sites = useQuery({ queryKey: ['sites'], queryFn: api.sites });
   const agents = useQuery({ queryKey: ['agents'], queryFn: api.agents });
-  const [agentId, setAgentId] = useState('');
-  const data = useQuery({
-    queryKey: ['collections', period, siteId, agentId],
-    queryFn: () => api.collections(period, siteId ? Number(siteId) : undefined, agentId ? Number(agentId) : undefined),
-  });
   const currency = user?.tenant?.currency ?? 'TZS';
-  const row = data.data;
-  const logo = user?.tenant?.logo_url;
+  const site = siteId ? Number(siteId) : undefined;
+  const agent = agentId ? Number(agentId) : undefined;
+
+  const day = useQuery({ queryKey: ['collections', 'day', siteId, agentId], queryFn: () => api.collections('day', site, agent) });
+  const week = useQuery({ queryKey: ['collections', 'week', siteId, agentId], queryFn: () => api.collections('week', site, agent) });
+  const month = useQuery({ queryKey: ['collections', 'month', siteId, agentId], queryFn: () => api.collections('month', site, agent) });
+  const byPeriod: Record<Period, Collections | undefined> = { day: day.data, week: week.data, month: month.data };
 
   return (
     <div>
-      <PageHeader
-        title="Collections"
-        subtitle={`${user?.tenant?.portal_name || user?.tenant?.name || 'Operator'} — internet iliyotolewa, si pesa mkononi ya wakala.`}
-      />
-      {logo && <img src={logo} alt="" className="mb-4 h-12 object-contain" />}
-      <Callout>
-        <strong>Lipia</strong> ni malipo kwenye portal.{' '}
-        <strong>Kadi</strong> ni vocha zilizotumika kwenye Wi‑Fi. Wakala anaona pesa mkononi kwenye desk yake wakati anauza
-        (chapisha) — hiyo si kwenye ukurasa huu.
-      </Callout>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Segmented
-          value={period}
-          onChange={setPeriod}
-          label="Kipindi"
-          options={[
-            { value: 'day', label: 'Leo' },
-            { value: 'week', label: 'Wiki' },
-            { value: 'month', label: 'Mwezi' },
-          ]}
-        />
+      <PageHeader title={sw('Makusanyo', 'Collections')} />
+      <div className="mb-4 flex flex-wrap gap-2">
         <select className={`${inputClass} max-w-48`} value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-          <option value="">Sites zote</option>
-          {(sites.data?.data ?? []).map((site) => (
-            <option key={site.id} value={site.id}>
-              {site.name}
+          <option value="">{sw('Maeneo', 'Sites')}</option>
+          {(sites.data?.data ?? []).map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
             </option>
           ))}
         </select>
         <select className={`${inputClass} max-w-48`} value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-          <option value="">Mawakala wote</option>
-          {(agents.data?.data ?? []).map((agent) => (
-            <option key={agent.id} value={agent.id}>
-              {agent.name}
+          <option value="">{sw('Mawakala', 'Agents')}</option>
+          {(agents.data?.data ?? []).map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
             </option>
           ))}
         </select>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <p className="text-sm text-ink-700">Lipia</p>
-          <p className="mt-1 text-2xl font-bold">{row ? money(row.lipia_minor, currency) : '—'}</p>
-          <p className="text-sm text-ink-700">{row?.lipia_count ?? 0} orders kwenye portal</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-ink-700">Kadi zilizotumika</p>
-          <p className="mt-1 text-2xl font-bold">{row ? money(row.kadi_minor, currency) : '—'}</p>
-          <p className="text-sm text-ink-700">{row?.kadi_count ?? 0} ziliingia Wi‑Fi</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-ink-700">Jumla</p>
-          <p className="mt-1 text-2xl font-bold">{row ? money(row.total_minor, currency) : '—'}</p>
-          <p className="text-sm text-ink-700">
-            Kipindi kilichopita: {row ? money(row.previous_total_minor, currency) : '—'}
-          </p>
-          {row && (
-            <p className="mt-2">
-              <Delta pct={row.previous_total_minor === 0 ? null : Math.round(((row.total_minor - row.previous_total_minor) / row.previous_total_minor) * 100)} />
-            </p>
-          )}
-        </Card>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {periods.map((period) => {
+          const row = byPeriod[period.key];
+          return (
+            <button
+              key={period.key}
+              type="button"
+              onClick={() => setFocus(period.key)}
+              className={`rounded-2xl border p-4 text-left shadow-sm ${
+                focus === period.key ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white'
+              }`}
+            >
+              <p className="text-xs font-semibold tracking-wide text-ink-700 uppercase">{period.label}</p>
+              <p className="mt-1 text-2xl font-bold text-ink-900">{row ? money(row.total_minor, currency) : '—'}</p>
+              <p className="mt-2 text-sm text-ink-700">
+                {sw('Vocha', 'Vouchers')} {row ? money(row.kadi_minor, currency) : '—'}
+              </p>
+              <p className="text-sm text-ink-700">
+                {sw('Malipo ya simu', 'Mobile money')} {row ? money(row.lipia_minor, currency) : '—'}
+              </p>
+            </button>
+          );
+        })}
       </div>
-      <Card className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold tracking-wide text-ink-700 uppercase">
-          {period === 'day' ? 'Leo' : period === 'week' ? 'Wiki hii' : 'Mwezi huu'}
-        </h2>
-        <Suspense fallback={<p className="text-sm text-ink-700">Inapakia chati…</p>}>
-          <RevenueChart series={row?.series ?? []} currency={currency} />
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-ink-700">{periods.find((period) => period.key === focus)?.label}</h2>
+        <Suspense fallback={<p className="text-sm text-ink-700">…</p>}>
+          <RevenueChart series={byPeriod[focus]?.series ?? []} currency={currency} />
         </Suspense>
-      </Card>
-      <p className="mt-4 text-sm text-ink-700">
-        Bili ya Kasi (unachodaiwa platform) iko kwenye{' '}
-        <Link to="/billing" className="font-semibold text-brand-700 hover:underline">
-          Billing
-        </Link>
-        , si hapa.
-      </p>
+      </section>
     </div>
   );
 }
