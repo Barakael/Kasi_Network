@@ -25,25 +25,21 @@ class CustomerController
         $siteIds = $this->siteScope($request->user(), $request->integer('site_id') ?: null);
 
         $status = $request->string('status')->value();
-        $haiIds = $directory->haiIds(
-            siteId: $request->integer('site_id') ?: null,
-            siteIds: $siteIds,
-        );
-
-        $onlineIds = $status === 'online'
-            ? $directory->onlineIds(
-                siteId: $request->integer('site_id') ?: null,
-                siteIds: $siteIds,
-            )
-            : collect();
+        $siteId = $request->integer('site_id') ?: null;
+        $haiIds = $directory->haiIds(siteId: $siteId, siteIds: $siteIds);
+        $onlineIds = $directory->onlineIds(siteId: $siteId, siteIds: $siteIds);
+        $paidIds = $directory->paidIds(siteId: $siteId, siteIds: $siteIds);
+        $expiredIds = $directory->expiredIds(siteId: $siteId, siteIds: $siteIds);
 
         $customers = Customer::query()
             ->with('site')
             ->when($siteIds !== null, fn ($q) => $q->whereIn('site_id', $siteIds))
-            ->when($request->integer('site_id'), fn ($q) => $q->where('site_id', $request->integer('site_id')))
+            ->when($siteId, fn ($q) => $q->where('site_id', $siteId))
             ->when($status === 'online', fn ($q) => $q->whereIn('id', $onlineIds->isEmpty() ? [0] : $onlineIds))
             ->when($status === 'hai', fn ($q) => $q->whereIn('id', $haiIds))
             ->when($status === 'kimya', fn ($q) => $q->whereNotIn('id', $haiIds->isEmpty() ? [0] : $haiIds))
+            ->when($status === 'paid', fn ($q) => $q->whereIn('id', $paidIds->isEmpty() ? [0] : $paidIds))
+            ->when($status === 'expired', fn ($q) => $q->whereIn('id', $expiredIds->isEmpty() ? [0] : $expiredIds))
             ->when($request->filled('q'), function ($query) use ($request): void {
                 $raw = trim($request->string('q')->value());
                 if ($raw === '') {
@@ -58,16 +54,30 @@ class CustomerController
                     }
                 });
             })
-            ->orderByDesc('last_seen_at')
-            ->paginate($request->integer('per_page', 50));
+            ->orderByDesc('first_seen_at')
+            ->orderByDesc('id')
+            ->paginate($request->integer('per_page', 10));
 
-        $customers->getCollection()->transform(function (Customer $customer) use ($haiIds, $directory): Customer {
+        $customers->getCollection()->transform(function (Customer $customer) use ($haiIds, $paidIds, $expiredIds, $directory): Customer {
             $customer->setAttribute('presence', $haiIds->contains($customer->id) ? 'hai' : 'kimya');
+            $customer->setAttribute('payment', $paidIds->contains($customer->id) ? 'paid' : ($expiredIds->contains($customer->id) ? 'expired' : 'new'));
 
             return $directory->decorate($customer);
         });
 
-        return CustomerResource::collection($customers);
+        $all = Customer::query()
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('site_id', $siteIds))
+            ->when($siteId, fn ($q) => $q->where('site_id', $siteId))
+            ->count();
+
+        return CustomerResource::collection($customers)->additional([
+            'counts' => [
+                'all' => $all,
+                'online' => $onlineIds->count(),
+                'paid' => $paidIds->count(),
+                'expired' => $expiredIds->count(),
+            ],
+        ]);
     }
 
     public function show(Request $request, Customer $customer, CustomerDirectory $directory): JsonResponse
