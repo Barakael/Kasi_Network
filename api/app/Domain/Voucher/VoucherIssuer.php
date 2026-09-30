@@ -118,9 +118,11 @@ final readonly class VoucherIssuer
         $suffixLength = (int) config('kasi.voucher.group_size');
         $now = Carbon::now();
 
-        $shelfExpiresAt = $plan->shelf_life_days === null
-            ? null
-            : $now->copy()->addDays($plan->shelf_life_days);
+        $shelfExpiresAt = $batch instanceof VoucherBatch
+            ? $batch->shelf_expires_at
+            : ($plan->shelf_life_days === null
+                ? null
+                : $now->copy()->addDays($plan->shelf_life_days));
 
         $terms = $plan->termsSnapshot();
         // No shared prefix on the card: every code is a fresh random string.
@@ -234,10 +236,13 @@ final readonly class VoucherIssuer
 
         while (count($codes) < $size) {
             $code = VoucherCode::generate($bodyLength);
-            $codes[$code] = true;
+            // The value must stay a string. A code of only digits would become
+            // an integer if it were used as the array key and then read back
+            // with array_keys().
+            $codes[$code] = $code;
         }
 
-        return array_keys($codes);
+        return array_values($codes);
     }
 
     /**
