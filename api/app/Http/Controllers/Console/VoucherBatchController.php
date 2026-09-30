@@ -69,11 +69,14 @@ class VoucherBatchController
         $this->authorize('create', VoucherBatch::class);
 
         $batch = VoucherBatch::create([
-            ...$request->validated(),
+            ...$request->safe()->except(['expires_on']),
             'reference' => $request->string('reference')->value()
                 ?: 'B-'.Str::upper(Str::random(6)),
             'created_by_user_id' => $request->user()->id,
             'status' => BatchStatus::Generating,
+            'shelf_expires_at' => $request->filled('expires_on')
+                ? $request->date('expires_on')?->endOfDay()
+                : null,
         ]);
 
         /*
