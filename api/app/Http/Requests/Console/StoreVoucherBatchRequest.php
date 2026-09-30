@@ -65,6 +65,8 @@ class StoreVoucherBatchRequest extends FormRequest
             ],
 
             'notes' => ['nullable', 'string', 'max:500'],
+
+            'expires_on' => ['nullable', 'date', 'after_or_equal:today'],
         ];
     }
 
