@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $id
  * @property int $tenant_id
  * @property string $name
+ * @property string|null $abbreviation
  * @property string $slug
  * @property string|null $ssid
  * @property string $nas_identifier
@@ -31,6 +32,7 @@ class Site extends Model
     protected $fillable = [
         'tenant_id',
         'name',
+        'abbreviation',
         'slug',
         'ssid',
         'nas_identifier',
