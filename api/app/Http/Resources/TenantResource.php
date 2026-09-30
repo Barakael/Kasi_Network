@@ -32,6 +32,8 @@ class TenantResource extends JsonResource
             'support_phone' => $this->support_phone,
             'logo_url' => $this->logoUrl(),
             'palmpesa_configured' => $this->palmpesaConfigured(),
+            'palmpesa_user_id' => $this->palmpesa_user_id,
+            'palmpesa_vendor' => $this->palmpesa_vendor,
             /*
              * Whether payments are configured, never the credentials themselves.
              * The console needs this to decide if online bundle sales can be
