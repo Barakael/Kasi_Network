@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SiteController
 {
@@ -34,15 +35,31 @@ class SiteController
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'abbreviation' => ['nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9]+$/'],
             'ssid' => ['nullable', 'string', 'max:32'],
-            'nas_identifier' => ['required', 'string', 'max:64', 'unique:sites,nas_identifier'],
+            'nas_identifier' => ['nullable', 'string', 'max:64', 'unique:sites,nas_identifier'],
             'timezone' => ['nullable', 'string', 'max:64'],
             'address' => ['nullable', 'string', 'max:255'],
         ]);
 
+        if (! filled($validated['abbreviation'] ?? null) && ! filled($validated['nas_identifier'] ?? null)) {
+            throw ValidationException::withMessages([
+                'abbreviation' => 'Weka kifupi cha eneo.',
+            ]);
+        }
+
+        $abbreviation = filled($validated['abbreviation'] ?? null)
+            ? strtoupper($validated['abbreviation'])
+            : null;
+        $nas = $validated['nas_identifier'] ?? $this->uniqueNasIdentifier($abbreviation ?? Str::upper(Str::slug($validated['name'], '')));
+
         $site = Site::create([
-            ...$validated,
-            'slug' => Str::slug($validated['name']).'-'.Str::lower(Str::random(4)),
+            'name' => $validated['name'],
+            'abbreviation' => $abbreviation,
+            'ssid' => $validated['ssid'] ?? $validated['name'],
+            'nas_identifier' => $nas,
+            'address' => $validated['address'] ?? null,
+            'slug' => Str::slug($abbreviation ?? $validated['name']).'-'.Str::lower(Str::random(4)),
             'status' => 'active',
             'timezone' => $validated['timezone'] ?? 'Africa/Dar_es_Salaam',
         ]);
@@ -95,6 +112,7 @@ class SiteController
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
+            'abbreviation' => ['sometimes', 'nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9]+$/'],
             'ssid' => ['sometimes', 'nullable', 'string', 'max:32'],
             'timezone' => ['sometimes', 'nullable', 'string', 'max:64'],
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -102,6 +120,10 @@ class SiteController
             'agent_ids' => ['sometimes', 'array'],
             'agent_ids.*' => ['integer'],
         ]);
+
+        if (array_key_exists('abbreviation', $validated) && filled($validated['abbreviation'])) {
+            $validated['abbreviation'] = strtoupper($validated['abbreviation']);
+        }
 
         $site->update(collect($validated)->except('agent_ids')->all());
 
@@ -116,5 +138,19 @@ class SiteController
         $audit->record('site.updated', $site, ['fields' => array_keys($validated)]);
 
         return new SiteResource($site->fresh(['agents'])->loadCount('nasDevices'));
+    }
+
+    private function uniqueNasIdentifier(string $base): string
+    {
+        $candidate = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $base) ?: 'SITE', 0, 12));
+        $nas = $candidate;
+        $suffix = 2;
+
+        while (Site::withoutTenantScope()->where('nas_identifier', $nas)->exists()) {
+            $nas = substr($candidate, 0, 8).$suffix;
+            $suffix++;
+        }
+
+        return $nas;
     }
 }
