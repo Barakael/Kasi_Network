@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * A run of printed vouchers.
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $quantity
  * @property int|null $assigned_agent_id
  * @property BatchStatus $status
+ * @property Carbon|null $shelf_expires_at
  */
 class VoucherBatch extends Model
 {
@@ -39,6 +41,7 @@ class VoucherBatch extends Model
         'assigned_agent_id',
         'status',
         'notes',
+        'shelf_expires_at',
     ];
 
     /**
@@ -49,6 +52,7 @@ class VoucherBatch extends Model
         return [
             'status' => BatchStatus::class,
             'printed_at' => 'datetime',
+            'shelf_expires_at' => 'datetime',
         ];
     }
 
