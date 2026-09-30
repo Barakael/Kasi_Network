@@ -12,9 +12,6 @@ enum UserRole: string
     /** Full control of a single operator, including billing credentials. */
     case Owner = 'owner';
 
-    /** Day-to-day operator staff: bundles, vouchers, routers, sessions. */
-    case Staff = 'staff';
-
     /**
      * Sells printed vouchers at a counter. Deliberately limited to printing
      * batches assigned to them; agents cannot see revenue, other agents' stock,
@@ -26,7 +23,7 @@ enum UserRole: string
     {
         return match ($this) {
             self::PlatformAdmin => 'Super Admin',
-            self::Owner, self::Staff => 'System Administrator',
+            self::Owner => 'System Administrator',
             self::Agent => 'Agent',
         };
     }
@@ -36,7 +33,7 @@ enum UserRole: string
      */
     public function managesTenant(): bool
     {
-        return in_array($this, [self::PlatformAdmin, self::Owner, self::Staff], true);
+        return in_array($this, [self::PlatformAdmin, self::Owner], true);
     }
 
     public function isAgent(): bool
