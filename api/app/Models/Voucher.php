@@ -139,7 +139,7 @@ class Voucher extends Model
      */
     public function displayCode(): string
     {
-        return VoucherCode::forDisplay($this->code, (int) config('kasi.voucher.group_size'));
+        return VoucherCode::normalise($this->code);
     }
 
     /**
