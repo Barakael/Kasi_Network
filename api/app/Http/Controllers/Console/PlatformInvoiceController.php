@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Console;
 use App\Domain\Tenancy\AuditLogger;
 use App\Http\Resources\PlatformInvoiceResource;
 use App\Models\PlatformInvoice;
+use App\Models\PlatformProfile;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,70 @@ class PlatformInvoiceController
                 ->latest('id')
                 ->paginate(50),
         );
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user?->managesTenant() && $user->tenant_id !== null, 403);
+
+        $tenant = $user->tenant;
+        $lastPaid = PlatformInvoice::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('status', 'paid')
+            ->whereNotNull('paid_at')
+            ->latest('paid_at')
+            ->first();
+
+        $anchor = $lastPaid?->paid_at ?? $tenant->created_at ?? now();
+        $elapsed = (int) $anchor->diffInDays(now());
+        $open = PlatformInvoice::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('status', '!=', 'paid')
+            ->latest('id')
+            ->first();
+        $profile = PlatformProfile::current();
+
+        return response()->json([
+            'data' => [
+                'days_left' => max(0, 30 - $elapsed),
+                'days_used' => min(30, $elapsed),
+                'anchor_at' => $anchor->toIso8601String(),
+                'last_paid_at' => $lastPaid?->paid_at?->toIso8601String(),
+                'amount_minor' => $open?->amount_minor ?? $lastPaid?->amount_minor,
+                'currency' => $open?->currency ?? $lastPaid?->currency ?? $tenant->currency,
+                'status' => $open?->status ?? ($lastPaid ? 'paid' : 'new'),
+                'payee_name' => $profile->payee_name,
+                'account_number' => $profile->account_number,
+                'instructions' => $profile->instructions,
+            ],
+        ]);
+    }
+
+    public function paymentDetails(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->isPlatformAdmin(), 403);
+
+        $profile = PlatformProfile::current();
+
+        return response()->json(['data' => $profile]);
+    }
+
+    public function updatePaymentDetails(Request $request, AuditLogger $audit): JsonResponse
+    {
+        abort_unless($request->user()?->isPlatformAdmin(), 403);
+
+        $validated = $request->validate([
+            'payee_name' => ['nullable', 'string', 'max:120'],
+            'account_number' => ['nullable', 'string', 'max:80'],
+            'instructions' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $profile = PlatformProfile::current();
+        $profile->update($validated);
+        $audit->record('platform.payment_details', $profile, ['fields' => array_keys($validated)], $request->user());
+
+        return response()->json(['data' => $profile->fresh()]);
     }
 
     public function store(Request $request, AuditLogger $audit): JsonResponse
