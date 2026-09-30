@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Restricts a route to specific roles.
  *
- *   Route::get('/reports', ...)->middleware('role:owner,staff');
+ *   Route::get('/reports', ...)->middleware('role:owner');
  *
  * Coarse gate only. Anything that depends on which records a user may touch --
  * an agent seeing just their own batches -- is a policy, not this.
