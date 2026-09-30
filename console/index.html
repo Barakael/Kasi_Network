@@ -2,12 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1d4ed8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="color-scheme" content="light" />
     <meta name="robots" content="noindex" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Kasi" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" href="/console/icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/console/apple-touch-icon.png" />
     <title>Kasi Network Console</title>
     <script>
+      (function () {
+        var dark = localStorage.getItem('kasi.theme') === 'dark';
+        if (dark) document.documentElement.dataset.theme = 'dark';
+        var color = dark ? '#121820' : '#ffffff';
+        var theme = document.querySelector('meta[name="theme-color"]');
+        if (theme) theme.setAttribute('content', color);
+        var scheme = document.querySelector('meta[name="color-scheme"]');
+        if (scheme) scheme.setAttribute('content', dark ? 'dark' : 'light');
+      })();
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
           regs.forEach(function (reg) {
