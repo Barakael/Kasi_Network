@@ -294,12 +294,12 @@ class VoucherIssuanceTest extends TestCase
     }
 
     #[Test]
-    public function issued_codes_are_ten_characters_without_a_shared_prefix(): void
+    public function issued_codes_are_six_characters_without_a_shared_prefix(): void
     {
         $codes = app(VoucherIssuer::class)->issue($this->plan, 20)->pluck('code');
 
         foreach ($codes as $code) {
-            $this->assertSame(10, strlen($code));
+            $this->assertSame(6, strlen($code));
             $this->assertTrue(VoucherCode::hasValidCheckCharacter($code));
         }
 
