@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App';
 import { AuthProvider } from './auth';
+import { PreferencesProvider } from './preferences';
 import './index.css';
 
 const container = document.getElementById('root');
@@ -27,9 +28,11 @@ createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={basename === '/' ? undefined : basename}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <PreferencesProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </PreferencesProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
