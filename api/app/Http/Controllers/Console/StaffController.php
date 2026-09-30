@@ -17,6 +17,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StaffController
 {
@@ -42,8 +43,8 @@ class StaffController
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:80'],
-            'email' => ['required', 'email', 'max:120', 'unique:users,email'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'email' => ['nullable', 'email', 'max:120', 'unique:users,email'],
+            'phone' => ['required', 'string', 'max:20'],
             'password' => ['nullable', 'string', 'min:8', 'max:72'],
             'site_ids' => ['nullable', 'array'],
             'site_ids.*' => [
@@ -52,17 +53,28 @@ class StaffController
             ],
         ]);
 
-        if (filled($validated['phone'] ?? null) && TanzanianPhone::isValid($validated['phone'])) {
-            $validated['phone'] = TanzanianPhone::toE164($validated['phone']);
+        if (! TanzanianPhone::isValid($validated['phone'])) {
+            throw ValidationException::withMessages([
+                'phone' => 'Weka namba ya simu ya Tanzania, mfano 07XXXXXXXX.',
+            ]);
+        }
+
+        $validated['phone'] = TanzanianPhone::toE164($validated['phone']);
+
+        if (User::query()->where('phone', $validated['phone'])->exists()) {
+            throw ValidationException::withMessages([
+                'phone' => 'Namba hii tayari ina akaunti.',
+            ]);
         }
 
         $plain = $validated['password'] ?? Str::password(12, symbols: false);
+        $email = $validated['email'] ?? $validated['phone'].'@agents.kasi.test';
 
         $agent = User::create([
             'tenant_id' => $tenantId,
             'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
+            'email' => $email,
+            'phone' => $validated['phone'],
             'password' => Hash::make($plain),
             'role' => UserRole::Agent,
             'is_active' => true,
