@@ -27,7 +27,7 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</section>
+    <section className={`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5 ${className}`}>{children}</section>
   );
 }
 
@@ -141,10 +141,10 @@ export function StatCard({
   children?: ReactNode;
 }) {
   const body = (
-    <section className="h-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-400">
-      <p className="text-xs font-semibold tracking-[0.08em] text-ink-700 uppercase">{label}</p>
-      <p className="mt-1.5 text-2xl font-bold tracking-tight text-ink-900">{value}</p>
-      {hint && <p className="mt-1 text-sm text-ink-700">{hint}</p>}
+    <section className="h-full rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm transition hover:border-brand-400 sm:p-4">
+      <p className="text-[10px] font-semibold tracking-[0.06em] text-ink-700 uppercase sm:text-xs">{label}</p>
+      <p className="mt-0.5 text-base font-bold leading-tight tracking-tight text-ink-900 sm:mt-1.5 sm:text-2xl">{value}</p>
+      {hint && <p className="mt-0.5 text-[11px] leading-snug text-ink-700 sm:mt-1 sm:text-sm">{hint}</p>}
       {children && <div className="mt-2">{children}</div>}
     </section>
   );
