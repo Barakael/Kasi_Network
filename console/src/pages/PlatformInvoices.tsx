@@ -3,8 +3,10 @@ import { useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { Badge, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn } from '../components/ui';
 import { money } from '../format';
+import { usePrefs } from '../preferences';
 
 export function PlatformInvoicesPage() {
+  const { sw } = usePrefs();
   const client = useQueryClient();
   const invoices = useQuery({ queryKey: ['platform-invoices'], queryFn: api.platformInvoices });
   const tenants = useQuery({ queryKey: ['platform-tenants'], queryFn: api.platformTenants });
@@ -22,7 +24,7 @@ export function PlatformInvoicesPage() {
 
   return (
     <div>
-      <PageHeader title="Invoices" subtitle="What System Administrators owe Kasi. Never mixed into hotspot Collections." />
+      <PageHeader title={sw('Ankara', 'Invoices')} subtitle={sw('Wasimamizi wanadaiwa na Kasi. Hazichanganyiki na makusanyo ya eneo.', 'What administrators owe Kasi. Never mixed into hotspot collections.')} />
       <ErrorBanner message={error} />
       <Card className="mb-4">
         <form
@@ -32,9 +34,9 @@ export function PlatformInvoicesPage() {
             create.mutate();
           }}
         >
-          <Field label="Operator">
+          <Field label={sw('Mwendeshaji', 'Operator')}>
             <select className={inputClass} value={form.tenant_uuid} onChange={(e) => setForm({ ...form, tenant_uuid: e.target.value })} required>
-              <option value="">Select…</option>
+              <option value="">{sw('Chagua…', 'Select…')}</option>
               {(tenants.data?.data ?? []).map((tenant) => (
                 <option key={tenant.uuid} value={tenant.uuid}>
                   {tenant.portal_name || tenant.name}
@@ -42,14 +44,14 @@ export function PlatformInvoicesPage() {
               ))}
             </select>
           </Field>
-          <Field label="Amount (TZS)">
+          <Field label={sw('Kiasi (TZS)', 'Amount (TZS)')}>
             <input className={inputClass} type="number" value={form.amount_minor} onChange={(e) => setForm({ ...form, amount_minor: Number(e.target.value) })} />
           </Field>
-          <Field label="Period">
+          <Field label={sw('Kipindi', 'Period')}>
             <input className={inputClass} value={form.period_label} onChange={(e) => setForm({ ...form, period_label: e.target.value })} />
           </Field>
           <button type="submit" className={primaryBtn} disabled={create.isPending}>
-            Issue
+            {sw('Toa ankara', 'Issue')}
           </button>
         </form>
       </Card>
@@ -73,7 +75,7 @@ export function PlatformInvoicesPage() {
                       void api.markInvoicePaid(row.id).then(() => client.invalidateQueries({ queryKey: ['platform-invoices'] }));
                     }}
                   >
-                    Mark paid
+                    {sw('Weka imelipwa', 'Mark paid')}
                   </button>
                 )}
               </div>
@@ -81,7 +83,7 @@ export function PlatformInvoicesPage() {
           </Card>
         ))}
       </div>
-      {!invoices.data?.data.length && <Empty>{invoices.isLoading ? 'Loading…' : 'No invoices yet.'}</Empty>}
+      {!invoices.data?.data.length && <Empty>{invoices.isLoading ? sw('Inapakia…', 'Loading…') : sw('Bado hakuna ankara.', 'No invoices yet.')}</Empty>}
     </div>
   );
 }
