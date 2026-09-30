@@ -5,25 +5,19 @@ import { AccountPage } from './pages/Account';
 import { AgentAnalyticsPage } from './pages/AgentAnalytics';
 import { AgentDeskPage } from './pages/AgentDesk';
 import { AgentPrintPage } from './pages/AgentPrint';
-import { AgentOnlinePage } from './pages/AgentOnline';
-import { AgentCustomersPage } from './pages/AgentCustomers';
 import { AgentAccountPage } from './pages/AgentAccount';
-import { AgentsPage } from './pages/Agents';
 import { OperatorAnalyticsPage } from './pages/OperatorAnalytics';
 import { PlatformOverviewPage } from './pages/PlatformOverview';
 import { BatchesPage } from './pages/Batches';
 import { BillingPage } from './pages/Billing';
-import { CampaignsPage } from './pages/Campaigns';
 import { CollectionsPage } from './pages/Collections';
 import { CustomersPage } from './pages/Customers';
 import { DashboardPage } from './pages/Dashboard';
-import { DevicesPage } from './pages/Devices';
 import { LoginPage } from './pages/Login';
 import { PlansPage } from './pages/Plans';
 import { PlatformInvoicesPage } from './pages/PlatformInvoices';
 import { PlatformPage } from './pages/Platform';
 import { RoutersPage } from './pages/Routers';
-import { SessionsPage } from './pages/Sessions';
 import { SettingsPage } from './pages/Settings';
 import { SitesPage } from './pages/Sites';
 import type { ReactNode } from 'react';
@@ -101,14 +95,7 @@ export function App() {
             </Guard>
           }
         />
-        <Route
-          path="sessions"
-          element={
-            <Guard agents="forbid" platform="forbid">
-              <SessionsPage />
-            </Guard>
-          }
-        />
+        <Route path="sessions" element={<Navigate to="/customers" replace />} />
         <Route
           path="plans"
           element={
@@ -125,14 +112,7 @@ export function App() {
             </Guard>
           }
         />
-        <Route
-          path="agents"
-          element={
-            <Guard agents="forbid" platform="forbid">
-              <AgentsPage />
-            </Guard>
-          }
-        />
+        <Route path="agents" element={<Navigate to="/sites" replace />} />
         <Route
           path="sites"
           element={
@@ -141,16 +121,10 @@ export function App() {
             </Guard>
           }
         />
+        <Route path="routers" element={<Navigate to="/devices" replace />} />
+        <Route path="analytics" element={<Navigate to="/reports" replace />} />
         <Route
-          path="routers"
-          element={
-            <Guard agents="forbid" platform="forbid">
-              <RoutersPage />
-            </Guard>
-          }
-        />
-        <Route
-          path="analytics"
+          path="reports"
           element={
             <Guard agents="forbid" platform="forbid">
               <OperatorAnalyticsPage />
@@ -169,7 +143,7 @@ export function App() {
           path="devices"
           element={
             <Guard agents="forbid" platform="forbid">
-              <DevicesPage />
+              <RoutersPage />
             </Guard>
           }
         />
@@ -189,14 +163,7 @@ export function App() {
             </Guard>
           }
         />
-        <Route
-          path="campaigns"
-          element={
-            <Guard agents="forbid" platform="forbid">
-              <CampaignsPage />
-            </Guard>
-          }
-        />
+        <Route path="campaigns" element={<Navigate to="/settings" replace />} />
         <Route
           path="settings"
           element={
@@ -237,19 +204,12 @@ export function App() {
             </Guard>
           }
         />
-        <Route
-          path="desk/online"
-          element={
-            <Guard agents="only">
-              <AgentOnlinePage />
-            </Guard>
-          }
-        />
+        <Route path="desk/online" element={<Navigate to="/desk/wateja" replace />} />
         <Route
           path="desk/wateja"
           element={
             <Guard agents="only">
-              <AgentCustomersPage />
+              <CustomersPage />
             </Guard>
           }
         />
