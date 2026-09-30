@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\RadAcct;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -116,6 +117,57 @@ final class CustomerDirectory
             ->pluck('id');
     }
 
+    /**
+     * Customers whose voucher or payment is still valid.
+     *
+     * @return Collection<int, int>
+     */
+    public function paidIds(?int $siteId = null, ?iterable $siteIds = null): Collection
+    {
+        $validCustomerIds = Voucher::query()
+            ->whereNotNull('customer_id')
+            ->where(function ($query): void {
+                $query->where(function ($live): void {
+                    $live->where('status', VoucherStatus::Active)
+                        ->where(function ($window): void {
+                            $window->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                        });
+                })->orWhere(function ($unused): void {
+                    $unused->where('status', VoucherStatus::Unused)
+                        ->where(function ($window): void {
+                            $window->whereNull('shelf_expires_at')->orWhere('shelf_expires_at', '>', now());
+                        });
+                });
+            })
+            ->select('customer_id');
+
+        return $this->scopedCustomers($siteId, $siteIds)
+            ->whereIn('id', $validCustomerIds)
+            ->pluck('id');
+    }
+
+    /**
+     * Customers who have paid before, and whose access has run out.
+     *
+     * @return Collection<int, int>
+     */
+    public function expiredIds(?int $siteId = null, ?iterable $siteIds = null): Collection
+    {
+        $paid = $this->paidIds($siteId, $siteIds);
+        $hadVoucher = Voucher::query()->whereNotNull('customer_id')->select('customer_id');
+        $hadOrder = Order::query()
+            ->whereIn('status', [OrderStatus::Paid, OrderStatus::Fulfilled])
+            ->select('phone');
+
+        return $this->scopedCustomers($siteId, $siteIds)
+            ->where(function ($query) use ($hadVoucher, $hadOrder): void {
+                $query->whereIn('id', $hadVoucher)->orWhereIn('phone', $hadOrder);
+            })
+            ->pluck('id')
+            ->reject(fn (int $id) => $paid->contains($id))
+            ->values();
+    }
+
     public function unusedPaidVoucher(Customer $customer): ?Voucher
     {
         $order = Order::query()
@@ -212,6 +264,16 @@ final class CustomerDirectory
         }
 
         $voucher->update(['customer_id' => $customer->id]);
+    }
+
+    /**
+     * @return Builder<Customer>
+     */
+    private function scopedCustomers(?int $siteId, ?iterable $siteIds)
+    {
+        return Customer::query()
+            ->when($siteId, fn ($q) => $q->where('site_id', $siteId))
+            ->when($siteIds !== null, fn ($q) => $q->whereIn('site_id', $siteIds));
     }
 
     private function hasOpenSession(Customer $customer): bool
