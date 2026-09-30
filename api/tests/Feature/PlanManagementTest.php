@@ -163,7 +163,7 @@ class PlanManagementTest extends TestCase
     #[Test]
     public function an_agent_cannot_change_the_price_list(): void
     {
-        // Staff may edit bundles; agents sell what they are given and nothing
+        // The owner may edit bundles; agents sell what they are given and nothing
         // more, which is the whole of the reseller tier.
         $agent = User::factory()->for($this->tenant)->agent()->create();
 
