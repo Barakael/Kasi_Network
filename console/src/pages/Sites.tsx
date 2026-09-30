@@ -1,129 +1,165 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
-import { api } from '../api';
-import { Callout, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn } from '../components/ui';
-import { money } from '../format';
-import { useAuth } from '../auth';
+import { api, type Site } from '../api';
+import { Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn } from '../components/ui';
+import { usePrefs } from '../preferences';
 
 export function SitesPage() {
-  const { user } = useAuth();
+  const { sw } = usePrefs();
   const client = useQueryClient();
   const sites = useQuery({ queryKey: ['sites'], queryFn: api.sites });
-  const agents = useQuery({ queryKey: ['agents'], queryFn: api.agents });
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', ssid: '', nas_identifier: '' });
-  const [openId, setOpenId] = useState<number | null>(null);
-  const detail = useQuery({
-    queryKey: ['site', openId],
-    queryFn: () => api.site(openId as number),
-    enabled: openId !== null,
-  });
-  const currency = user?.tenant?.currency ?? 'TZS';
+  const [selected, setSelected] = useState<number | null>(null);
+  const [siteForm, setSiteForm] = useState({ name: '', abbreviation: '' });
+  const [agentForm, setAgentForm] = useState({ name: '', phone: '' });
+  const [password, setPassword] = useState<string | null>(null);
 
-  const create = useMutation({
-    mutationFn: () => api.createSite(form),
-    onSuccess: () => {
-      setForm({ name: '', ssid: '', nas_identifier: '' });
+  const createSite = useMutation({
+    mutationFn: () => api.createSite(siteForm),
+    onSuccess: (body) => {
+      setSiteForm({ name: '', abbreviation: '' });
+      setSelected(body.data.id);
       void client.invalidateQueries({ queryKey: ['sites'] });
     },
     onError: (err: Error) => setError(err.message),
   });
 
+  const createAgent = useMutation({
+    mutationFn: () =>
+      api.createAgent({
+        name: agentForm.name,
+        phone: agentForm.phone,
+        site_ids: selected ? [selected] : [],
+      }),
+    onSuccess: (body) => {
+      setPassword(body.password);
+      setAgentForm({ name: '', phone: '' });
+      void client.invalidateQueries({ queryKey: ['sites'] });
+      void client.invalidateQueries({ queryKey: ['agents'] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const rows = sites.data?.data ?? [];
+  const current = rows.find((site) => site.id === selected) ?? null;
+
   return (
     <div>
-      <PageHeader title="Sites" subtitle="Shop: SSID, mawakala, na pack. Weka site kabla ya router au wakala." />
+      <PageHeader title={sw('Maeneo', 'Sites')} />
       <ErrorBanner message={error} />
-      {sites.isSuccess && !(sites.data?.data.length) && (
-        <Callout tone="brand">
-          Portal site id ndiyo NAS-Identifier kwenye MikroTik. Baada ya site: ongeza router, kisha mwalike wakala.
-        </Callout>
-      )}
-      <Card className="mb-4">
-        <form
-          className="grid gap-3 sm:grid-cols-3"
-          onSubmit={(event: FormEvent) => {
-            event.preventDefault();
-            create.mutate();
-          }}
-        >
-          <Field label="Name">
-            <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          </Field>
-          <Field label="SSID">
-            <input className={inputClass} value={form.ssid} onChange={(e) => setForm({ ...form, ssid: e.target.value })} />
-          </Field>
-          <Field label="Portal site id">
-            <input className={inputClass} value={form.nas_identifier} onChange={(e) => setForm({ ...form, nas_identifier: e.target.value })} required />
-          </Field>
-          <div className="sm:col-span-3">
-            <button type="submit" className={primaryBtn} disabled={create.isPending}>
-              Add site
+      <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
+        <div className="space-y-2">
+          {rows.map((site) => (
+            <button
+              key={site.id}
+              type="button"
+              onClick={() => {
+                setSelected(site.id);
+                setPassword(null);
+              }}
+              className={`w-full rounded-2xl border p-4 text-left ${
+                selected === site.id ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white'
+              }`}
+            >
+              <p className="font-semibold text-ink-900">{site.name}</p>
+              <p className="text-sm text-ink-700">{site.abbreviation || site.nas_identifier}</p>
             </button>
-          </div>
-        </form>
-      </Card>
-      <div className="space-y-3">
-        {(sites.data?.data ?? []).map((site) => (
-          <Card key={site.id}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <button type="button" className="text-left" onClick={() => setOpenId(openId === site.id ? null : site.id)}>
-                <p className="font-semibold">{site.name}</p>
-                <p className="text-sm text-ink-700">
-                  {site.ssid || 'Hakuna SSID'} · {site.nas_devices_count ?? 0} router
-                  {(site.agents ?? []).length ? ` · ${(site.agents ?? []).length} wakala` : ' · hakuna wakala'}
-                </p>
-              </button>
-              <label className="text-sm text-ink-800">
-                Agents
-                <select
-                  className={`${inputClass} mt-1 min-w-48`}
-                  multiple
-                  value={(site.agents ?? []).map((a) => String(a.id))}
-                  onChange={(e) => {
-                    const ids = Array.from(e.target.selectedOptions).map((o) => Number(o.value));
-                    setError(null);
-                    void api
-                      .updateSite(site.id, { agent_ids: ids })
-                      .then(() => client.invalidateQueries({ queryKey: ['sites'] }))
-                      .catch((err: Error) => setError(err.message));
-                  }}
-                >
-                  {(agents.data?.data ?? []).map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {openId === site.id && detail.data && (
-              <div className="mt-3 grid gap-2 border-t border-slate-200 pt-3 text-sm text-ink-800 sm:grid-cols-4">
-                <p>Routers: {site.nas_devices_count ?? 0}</p>
-                <p>Mtandaoni: {detail.data.online_count}</p>
-                <p>Leo: {money(detail.data.today.total_minor, currency)}</p>
-                <p>Kadi zilizobaki: {detail.data.remaining_cards}</p>
-                {detail.data.router_quiet && <p className="sm:col-span-4 text-amber-800">Router kimya — RADIUS haijaona paketi.</p>}
-                {(site.nas_devices_count ?? 0) === 0 && (
-                  <p className="sm:col-span-4">
-                    <Link to="/routers" className="font-semibold text-brand-700 hover:underline">
-                      Ongeza router
-                    </Link>
-                  </p>
-                )}
-                {(site.agents ?? []).length === 0 && (
-                  <p className="sm:col-span-4">
-                    <Link to="/agents" className="font-semibold text-brand-700 hover:underline">
-                      Pin wakala
-                    </Link>
-                  </p>
-                )}
-              </div>
-            )}
-          </Card>
-        ))}
+          ))}
+          {!rows.length && <Empty>{sites.isLoading ? '…' : sw('Maeneo', 'Sites')}</Empty>}
+          <form
+            className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4"
+            onSubmit={(event: FormEvent) => {
+              event.preventDefault();
+              setError(null);
+              createSite.mutate();
+            }}
+          >
+            <Field label={sw('Jina', 'Name')}>
+              <input className={inputClass} value={siteForm.name} onChange={(e) => setSiteForm({ ...siteForm, name: e.target.value })} required />
+            </Field>
+            <Field label={sw('Kifupi', 'Abbreviation')}>
+              <input
+                className={inputClass}
+                value={siteForm.abbreviation}
+                onChange={(e) => setSiteForm({ ...siteForm, abbreviation: e.target.value.toUpperCase() })}
+                maxLength={12}
+                required
+              />
+            </Field>
+            <button type="submit" className={primaryBtn} disabled={createSite.isPending}>
+              {sw('Ongeza eneo', 'Add site')}
+            </button>
+          </form>
+        </div>
+        <SiteAgents
+          site={current}
+          agentForm={agentForm}
+          setAgentForm={setAgentForm}
+          password={password}
+          onSubmit={(event) => {
+            event.preventDefault();
+            setError(null);
+            createAgent.mutate();
+          }}
+          pending={createAgent.isPending}
+        />
       </div>
-      {!sites.data?.data.length && <Empty>{sites.isLoading ? 'Inapakia…' : 'Hakuna site bado — jaza fomu hapo juu.'}</Empty>}
     </div>
+  );
+}
+
+function SiteAgents({
+  site,
+  agentForm,
+  setAgentForm,
+  password,
+  onSubmit,
+  pending,
+}: {
+  site: Site | null;
+  agentForm: { name: string; phone: string };
+  setAgentForm: (value: { name: string; phone: string }) => void;
+  password: string | null;
+  onSubmit: (event: FormEvent) => void;
+  pending: boolean;
+}) {
+  const { sw } = usePrefs();
+
+  if (!site) {
+    return <p className="text-sm text-ink-700">{sw('Chagua eneo.', 'Choose a site.')}</p>;
+  }
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="text-lg font-semibold text-ink-900">
+        {site.name} <span className="text-sm font-medium text-ink-700">{site.abbreviation}</span>
+      </h2>
+      <ul className="mt-4 divide-y divide-slate-200">
+        {(site.agents ?? []).map((agent) => (
+          <li key={agent.id} className="flex items-center justify-between py-3">
+            <span className="font-medium">{agent.name}</span>
+            <span className="text-sm text-ink-700">{agent.phone ?? agent.email}</span>
+          </li>
+        ))}
+      </ul>
+      {password && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {sw('Nenosiri', 'Password')}: <strong>{password}</strong>
+        </p>
+      )}
+      <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={onSubmit}>
+        <Field label={sw('Jina', 'Name')}>
+          <input className={inputClass} value={agentForm.name} onChange={(e) => setAgentForm({ ...agentForm, name: e.target.value })} required />
+        </Field>
+        <Field label={sw('Simu', 'Phone')}>
+          <input className={inputClass} value={agentForm.phone} onChange={(e) => setAgentForm({ ...agentForm, phone: e.target.value })} placeholder="07XXXXXXXX" required />
+        </Field>
+        <div className="sm:col-span-2">
+          <button type="submit" className={primaryBtn} disabled={pending}>
+            {sw('Ongeza wakala', 'Add agent')}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
