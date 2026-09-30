@@ -51,7 +51,6 @@ class DatabaseSeeder extends Seeder
     {
         $accounts = [
             ['owner@kasi.test', 'Amina Owner', UserRole::Owner],
-            ['staff@kasi.test', 'Juma Staff', UserRole::Staff],
             ['agent@kasi.test', 'Neema Agent', UserRole::Agent],
         ];
 
