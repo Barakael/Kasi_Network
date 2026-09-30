@@ -80,6 +80,7 @@ class OperatorShopTest extends TestCase
         $this->actingAs($owner)
             ->postJson('/api/v1/agents', [
                 'name' => 'Neema',
+                'phone' => '0712345678',
                 'email' => 'neema@wayda.test',
                 'site_ids' => [$site->id],
             ])
