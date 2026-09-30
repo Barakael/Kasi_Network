@@ -42,7 +42,7 @@ class VoucherPolicy
     /**
      * Revealing the cleartext code, needed to reprint a damaged card.
      *
-     * Held to owners and staff even though agents can print whole batches: a
+     * Held to the owner even though agents can print whole batches: a
      * batch print is a physical sheet handed over at once, whereas looking up an
      * individual code is how a code already sold gets read a second time.
      */
