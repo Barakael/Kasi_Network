@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { api } from '../api';
+import { usePrefs } from '../preferences';
 import { Field, inputClass, primaryBtn } from './ui';
 
 export function PasswordForm({ onDone }: { onDone?: (message: string) => void }) {
+  const { sw } = usePrefs();
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -33,7 +35,7 @@ export function PasswordForm({ onDone }: { onDone?: (message: string) => void })
           {error}
         </p>
       )}
-      <Field label="Nenosiri la sasa">
+      <Field label={sw('Nenosiri la sasa', 'Current password')}>
         <input
           className={inputClass}
           type="password"
@@ -43,7 +45,7 @@ export function PasswordForm({ onDone }: { onDone?: (message: string) => void })
           required
         />
       </Field>
-      <Field label="Nenosiri jipya (angalau herufi 10)">
+      <Field label={sw('Nenosiri jipya (angalau herufi 10)', 'New password (at least 10 characters)')}>
         <input
           className={inputClass}
           type="password"
@@ -54,7 +56,7 @@ export function PasswordForm({ onDone }: { onDone?: (message: string) => void })
           required
         />
       </Field>
-      <Field label="Thibitisha nenosiri">
+      <Field label={sw('Thibitisha nenosiri', 'Confirm password')}>
         <input
           className={inputClass}
           type="password"
@@ -66,7 +68,7 @@ export function PasswordForm({ onDone }: { onDone?: (message: string) => void })
         />
       </Field>
       <button type="submit" className={primaryBtn} disabled={busy}>
-        {busy ? 'Subiri…' : 'Badilisha nenosiri'}
+        {busy ? sw('Subiri…', 'Wait…') : sw('Badilisha nenosiri', 'Change password')}
       </button>
     </form>
   );
