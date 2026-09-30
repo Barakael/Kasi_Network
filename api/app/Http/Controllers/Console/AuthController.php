@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Domain\Auth\Totp;
+use App\Domain\Billing\TanzanianPhone;
 use App\Domain\Tenancy\AuditLogger;
 use App\Http\Requests\Console\LoginRequest;
 use App\Http\Resources\UserResource;
@@ -25,7 +26,12 @@ class AuthController
     {
         $this->ensureNotRateLimited($request);
 
-        $user = User::query()->where('email', $request->string('email'))->first();
+        $login = trim($request->string('email')->value());
+        $user = User::query()->where('email', $login)->first();
+
+        if ($user === null && TanzanianPhone::isValid($login)) {
+            $user = User::query()->where('phone', TanzanianPhone::toE164($login))->first();
+        }
 
         /*
          * A single failure message for an unknown email, a wrong password and a
