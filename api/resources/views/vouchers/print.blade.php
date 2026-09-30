@@ -64,18 +64,9 @@
         .sheet {
             display: grid;
             grid-template-columns: repeat({{ $columns }}, 1fr);
-            /* Guillotine cuts are made along shared edges, so cards sit flush
-               against each other and the borders double as cut lines. A gap
-               would mean twice as many cuts for the same yield. */
-            gap: 0;
-
-            /* Each card draws only its right and bottom edge, so an internal
-               line is never drawn twice. The sheet closes the grid on the two
-               sides no card covers. Drawing all four edges per card instead
-               puts two dashed lines a hair apart everywhere they meet, which
-               reads as a fuzzy double line and is harder to cut to. */
-            border-top: 0.2mm dashed #9ca3af;
-            border-left: 0.2mm dashed #9ca3af;
+            /* Each voucher is its own dashed rectangle so a pair of scissors
+               can take one card off the sheet without a shared cut line. */
+            gap: 2mm;
         }
 
         /* On paper the sheet is A4 by definition. On screen it would otherwise
@@ -96,8 +87,7 @@
                area of one A4 sheet. */
             height: {{ $cardHeightMm }}mm;
             padding: 2.5mm;
-            border-right: 0.2mm dashed #9ca3af;
-            border-bottom: 0.2mm dashed #9ca3af;
+            border: 0.35mm dashed #4b5563;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -164,7 +154,8 @@
                QR code. A code that wraps is legible but gets misread when a
                customer reads it back over the phone, which is the situation the
                grouping and the check character exist to survive. */
-            font-size: 10pt;
+            font-size: 14pt;
+            letter-spacing: 0.12em;
             font-weight: 700;
             white-space: nowrap;
             line-height: 1.3;
@@ -203,7 +194,7 @@
                 — for {{ $batch->assignedAgent->name }}
             @endif
         </div>
-        <button type="button" onclick="window.print()">Print</button>
+        <button type="button" onclick="window.print()">Pakua PDF</button>
     </div>
 
     <div class="sheet">
