@@ -1,49 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { api, type Plan } from '../api';
-import { Badge, Callout, Card, Empty, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
-import { bytes, money } from '../format';
+import { ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
+import { money } from '../format';
 import { useAuth } from '../auth';
+import { usePrefs } from '../preferences';
 
-const emptyForm = {
-  name: '',
-  billing_period: 'daily',
-  price_minor: 1500,
-  device_limit: 1,
-  on_quota_exhausted: 'disconnect',
-  data_cap_bytes: '',
-  duration_seconds: '',
-  rate_limit_down_kbps: 5120,
-  rate_limit_up_kbps: 2048,
-  is_sold_online: true,
-};
+function hoursOf(plan: Plan): number {
+  const seconds = plan.duration_seconds || plan.validity_seconds || 3600;
+  return Math.max(1, Math.round(seconds / 3600));
+}
+
+function periodLabel(plan: Plan, sw: (kiswahili: string, english: string) => string): string {
+  if (plan.billing_period === 'hourly') {
+    const hours = hoursOf(plan);
+    return sw(`Saa ${hours}`, `${hours} h`);
+  }
+  if (plan.billing_period === 'daily') return sw('Siku', 'Day');
+  if (plan.billing_period === 'weekly') return sw('Wiki', 'Week');
+  if (plan.billing_period === 'monthly') return sw('Mwezi', 'Month');
+  if (plan.billing_period === 'custom') return sw('Maalum', 'Custom');
+  return plan.billing_period_label;
+}
 
 export function PlansPage() {
   const { user } = useAuth();
+  const { sw } = usePrefs();
   const client = useQueryClient();
   const plans = useQuery({ queryKey: ['plans'], queryFn: api.plans });
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
-
-  const create = useMutation({
-    mutationFn: () =>
-      api.createPlan({
-        ...form,
-        price_minor: Number(form.price_minor),
-        device_limit: Number(form.device_limit),
-        rate_limit_down_kbps: Number(form.rate_limit_down_kbps) || null,
-        rate_limit_up_kbps: Number(form.rate_limit_up_kbps) || null,
-        data_cap_bytes: form.data_cap_bytes === '' ? null : Number(form.data_cap_bytes),
-        duration_seconds: form.duration_seconds === '' ? null : Number(form.duration_seconds),
-      }),
-    onSuccess: () => {
-      setOpen(false);
-      setForm(emptyForm);
-      void client.invalidateQueries({ queryKey: ['plans'] });
-    },
-    onError: (err: Error) => setError(err.message),
-  });
+  const [editing, setEditing] = useState<number | null>(null);
+  const currency = user?.tenant?.currency ?? 'TZS';
 
   const retire = useMutation({
     mutationFn: api.retirePlan,
@@ -51,130 +38,90 @@ export function PlansPage() {
     onError: (err: Error) => setError(err.message),
   });
 
-  function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    setError(null);
-    create.mutate();
-  }
+  const save = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Record<string, unknown> }) => api.updatePlan(id, payload),
+    onSuccess: () => {
+      setEditing(null);
+      void client.invalidateQueries({ queryKey: ['plans'] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
 
   return (
     <div>
-      <PageHeader title="Packages" subtitle="Bei za portal (Lipia) na kadi zilizochapishwa. Mteja haoni kbps — wewe tu.">
-        <button type="button" className={primaryBtn} onClick={() => setOpen((v) => !v)}>
-          {open ? 'Funga' : 'New bundle'}
-        </button>
-      </PageHeader>
+      <PageHeader title={sw('Vifurushi', 'Packages')} />
       <ErrorBanner message={error} />
-      {!plans.isLoading && !(plans.data?.data.length) && !open && (
-        <Callout tone="brand">Bila bundle, portal haina bei na huwezi kutengeneza pack. Bonyeza New bundle hapo juu.</Callout>
-      )}
-      {open && (
-        <Card className="mb-4">
-          <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
-            <Field label="Name">
-              <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            </Field>
-            <Field label="Period">
-              <select className={inputClass} value={form.billing_period} onChange={(e) => setForm({ ...form, billing_period: e.target.value })}>
-                <option value="hourly">Hourly</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="custom">Custom</option>
-              </select>
-            </Field>
-            <Field label="Price (minor units)">
-              <input className={inputClass} type="number" min={0} value={form.price_minor} onChange={(e) => setForm({ ...form, price_minor: Number(e.target.value) })} />
-            </Field>
-            <Field label="Devices">
-              <input className={inputClass} type="number" min={1} max={20} value={form.device_limit} onChange={(e) => setForm({ ...form, device_limit: Number(e.target.value) })} />
-            </Field>
-            <Field label="Download kbps">
-              <input className={inputClass} type="number" value={form.rate_limit_down_kbps} onChange={(e) => setForm({ ...form, rate_limit_down_kbps: Number(e.target.value) })} />
-            </Field>
-            <Field label="Upload kbps">
-              <input className={inputClass} type="number" value={form.rate_limit_up_kbps} onChange={(e) => setForm({ ...form, rate_limit_up_kbps: Number(e.target.value) })} />
-            </Field>
-            <Field label="Data cap bytes (empty = none)">
-              <input className={inputClass} value={form.data_cap_bytes} onChange={(e) => setForm({ ...form, data_cap_bytes: e.target.value })} />
-            </Field>
-            <label className="flex items-center gap-2 text-sm text-ink-800">
-              <input type="checkbox" checked={form.is_sold_online} onChange={(e) => setForm({ ...form, is_sold_online: e.target.checked })} />
-              Onyesha kwenye Lipia (portal)
-            </label>
-            <div className="sm:col-span-2">
-              <button type="submit" className={primaryBtn} disabled={create.isPending}>
-                Save bundle
-              </button>
-            </div>
-          </form>
-        </Card>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {(plans.data?.data ?? []).map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            currency={user?.tenant?.currency ?? 'TZS'}
-            onRetire={() => retire.mutate(plan.id)}
-          />
+          <article key={plan.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="truncate text-sm font-semibold text-ink-900">{plan.name}</p>
+            <p className="mt-1 text-xs text-ink-700">{periodLabel(plan, sw)}</p>
+            <p className="mt-2 text-lg font-bold text-ink-900">{money(plan.price_minor, currency)}</p>
+            {editing === plan.id ? (
+              <PlanEditor
+                plan={plan}
+                onCancel={() => setEditing(null)}
+                onSave={(payload) => save.mutate({ id: plan.id, payload })}
+              />
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className={secondaryBtn} onClick={() => setEditing(plan.id)}>
+                  {sw('Hariri', 'Edit')}
+                </button>
+                <button type="button" className={secondaryBtn} onClick={() => retire.mutate(plan.id)}>
+                  {sw('Futa', 'Delete')}
+                </button>
+              </div>
+            )}
+          </article>
         ))}
       </div>
-      {!plans.data?.data.length && <Empty>{plans.isLoading ? 'Inapakia bundles…' : 'Hakuna bundle bado.'}</Empty>}
     </div>
   );
 }
 
-function PlanCard({ plan, currency, onRetire }: { plan: Plan; currency: string; onRetire: () => void }) {
-  const client = useQueryClient();
-  const [offer, setOffer] = useState({ price_minor: plan.price_minor, offer_label: '', offer_ends_at: '' });
+function PlanEditor({
+  plan,
+  onCancel,
+  onSave,
+}: {
+  plan: Plan;
+  onCancel: () => void;
+  onSave: (payload: Record<string, unknown>) => void;
+}) {
+  const { sw } = usePrefs();
+  const hourly = plan.billing_period === 'hourly';
+  const [hours, setHours] = useState(hoursOf(plan));
+  const [price, setPrice] = useState(plan.price_minor);
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (hourly) {
+      const seconds = Math.max(1, hours) * 3600;
+      onSave({ price_minor: price, validity_seconds: seconds, duration_seconds: seconds });
+      return;
+    }
+    onSave({ price_minor: price });
+  }
 
   return (
-    <Card>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold text-ink-900">{plan.name}</h2>
-          <p className="text-sm text-ink-700">{plan.billing_period_label}</p>
-        </div>
-        <Badge tone={plan.has_active_offer ? 'amber' : plan.is_active === false ? 'slate' : 'green'}>
-          {money(plan.price_minor, currency)}
-        </Badge>
-      </div>
-      {plan.has_active_offer && <p className="mt-2 text-sm text-amber-800">{plan.offer_label}</p>}
-      <p className="mt-2 text-sm text-ink-800">
-        {bytes(plan.data_cap_bytes)} · {plan.device_limit} device{plan.device_limit === 1 ? '' : 's'}
-        {plan.is_sold_online === false ? ' · kadi tu' : ' · Lipia + kadi'}
-      </p>
-      {plan.has_active_offer ? (
-        <button
-          type="button"
-          className={`${secondaryBtn} mt-3`}
-          onClick={() => void api.restorePlanPrice(plan.id).then(() => client.invalidateQueries({ queryKey: ['plans'] }))}
-        >
-          Rudi bei
-        </button>
-      ) : (
-        <form
-          className="mt-3 grid gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void api.offerPlan(plan.id, {
-              ...offer,
-              offer_ends_at: offer.offer_ends_at ? new Date(offer.offer_ends_at).toISOString() : '',
-            }).then(() => client.invalidateQueries({ queryKey: ['plans'] }));
-          }}
-        >
-          <input className={inputClass} placeholder="Wiki Moja 4000" value={offer.offer_label} onChange={(e) => setOffer({ ...offer, offer_label: e.target.value })} />
-          <input className={inputClass} type="number" value={offer.price_minor} onChange={(e) => setOffer({ ...offer, price_minor: Number(e.target.value) })} />
-          <input className={inputClass} type="datetime-local" value={offer.offer_ends_at} onChange={(e) => setOffer({ ...offer, offer_ends_at: e.target.value })} />
-          <button type="submit" className={secondaryBtn}>
-            Set offer
-          </button>
-        </form>
+    <form className="mt-3 space-y-2" onSubmit={onSubmit}>
+      {hourly && (
+        <Field label={sw('Masaa', 'Hours')}>
+          <input className={inputClass} type="number" min={1} value={hours} onChange={(e) => setHours(Number(e.target.value))} />
+        </Field>
       )}
-      <button type="button" className={`${secondaryBtn} mt-3`} onClick={onRetire}>
-        Retire
-      </button>
-    </Card>
+      <Field label={sw('Bei', 'Price')}>
+        <input className={inputClass} type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value))} />
+      </Field>
+      <div className="flex gap-2">
+        <button type="submit" className={primaryBtn}>
+          {sw('Hifadhi', 'Save')}
+        </button>
+        <button type="button" className={secondaryBtn} onClick={onCancel}>
+          ×
+        </button>
+      </div>
+    </form>
   );
 }
