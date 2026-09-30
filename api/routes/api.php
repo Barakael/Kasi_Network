@@ -62,7 +62,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
         Route::get('reports/collections', [ReportController::class, 'collections'])->name('reports.collections');
         Route::post('sessions/disconnect', [SessionController::class, 'disconnect'])->name('sessions.disconnect');
 
-        Route::middleware('role:owner,staff')->group(function (): void {
+        Route::middleware('role:owner')->group(function (): void {
             Route::get('dashboard', DashboardController::class)->name('dashboard');
             Route::get('sessions', [SessionController::class, 'index'])->name('sessions.index');
 
@@ -113,6 +113,7 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
             Route::post('customers/{customer}/reveal', [CustomerController::class, 'reveal'])->name('customers.reveal');
 
             Route::get('billing/invoices', [PlatformInvoiceController::class, 'index'])->name('billing.invoices');
+            Route::get('billing/summary', [PlatformInvoiceController::class, 'summary'])->name('billing.summary');
         });
 
         Route::middleware('role:platform_admin')->group(function (): void {
@@ -123,6 +124,8 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
             Route::get('platform/invoices', [PlatformInvoiceController::class, 'index'])->name('platform.invoices.index');
             Route::post('platform/invoices', [PlatformInvoiceController::class, 'store'])->name('platform.invoices.store');
             Route::post('platform/invoices/{invoice}/paid', [PlatformInvoiceController::class, 'markPaid'])->name('platform.invoices.paid');
+            Route::get('platform/payment-details', [PlatformInvoiceController::class, 'paymentDetails'])->name('platform.payment-details');
+            Route::patch('platform/payment-details', [PlatformInvoiceController::class, 'updatePaymentDetails'])->name('platform.payment-details.update');
         });
     });
 });
