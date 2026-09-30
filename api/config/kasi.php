@@ -46,8 +46,8 @@ return [
          * printed code (body + check). No shared tenant prefix is embedded in the
          * code; operators are distinguished by tenant_id and the HMAC lookup.
          */
-        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 9),
-        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 5),
+        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 5),
+        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 4),
         // Bulk generation insert chunk. Large enough to keep a 10k batch fast,
         // small enough to stay well inside max_allowed_packet.
         'insert_chunk' => (int) env('KASI_VOUCHER_INSERT_CHUNK', 1000),
