@@ -15,25 +15,20 @@ import {
 } from '../components/ui';
 import { money } from '../format';
 import { useAuth } from '../auth';
+import { usePrefs } from '../preferences';
 
 const RevenueChart = lazy(() => import('./RevenueChart'));
 
 type Period = 'day' | 'week' | 'month';
 
-const periodOptions: { value: Period; label: string }[] = [
-  { value: 'day', label: 'Leo' },
-  { value: 'week', label: 'Wiki' },
-  { value: 'month', label: 'Mwezi' },
-];
-
-const periodWord: Record<Period, string> = {
-  day: 'jana',
-  week: 'wiki iliyopita',
-  month: 'mwezi uliopita',
-};
-
 export function OperatorAnalyticsPage() {
   const { user } = useAuth();
+  const { sw } = usePrefs();
+  const periodOptions: { value: Period; label: string }[] = [
+    { value: 'day', label: sw('Leo', 'Today') },
+    { value: 'week', label: sw('Wiki', 'Week') },
+    { value: 'month', label: sw('Mwezi', 'Month') },
+  ];
   const [period, setPeriod] = useState<Period>('day');
   const insights = useQuery({
     queryKey: ['insights', period],
@@ -51,14 +46,14 @@ export function OperatorAnalyticsPage() {
   return (
     <div>
       <PageHeader
-        title="Analytics"
-        subtitle={`${user?.tenant?.portal_name || user?.tenant?.name || 'Operator'} — pesa, wateja mtandaoni, kadi, na kila wakala.`}
+        title={sw('Ripoti', 'Reports')}
+        subtitle={`${user?.tenant?.portal_name || user?.tenant?.name || sw('Mwendeshaji', 'Operator')} — ${sw('pesa, wateja mtandaoni, kadi, na kila wakala.', 'money, online customers, cards, and every agent.')}`}
       >
-        <Segmented value={period} options={periodOptions} onChange={setPeriod} label="Kipindi" />
+        <Segmented value={period} options={periodOptions} onChange={setPeriod} label={sw('Kipindi', 'Period')} />
       </PageHeader>
 
       {!data && insights.isLoading ? (
-        <Empty>Inapakia takwimu…</Empty>
+        <Empty>{sw('Inapakia takwimu…', 'Loading figures…')}</Empty>
       ) : (
         data && (
           <div className="space-y-6">
@@ -78,47 +73,49 @@ export function OperatorAnalyticsPage() {
 }
 
 function Income({ data, currency, period }: { data: Insights; currency: string; period: Period }) {
+  const { sw } = usePrefs();
   const income = data.income;
   const lipiaShare = income.total_minor > 0 ? Math.round((income.lipia_minor / income.total_minor) * 100) : 0;
+  const earlier = period === 'day' ? sw('jana', 'yesterday') : period === 'week' ? sw('wiki iliyopita', 'last week') : sw('mwezi uliopita', 'last month');
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <StatCard
-          label={period === 'day' ? 'Mapato leo' : period === 'week' ? 'Mapato wiki hii' : 'Mapato mwezi huu'}
+          label={period === 'day' ? sw('Mapato leo', 'Income today') : period === 'week' ? sw('Mapato wiki hii', 'Income this week') : sw('Mapato mwezi huu', 'Income this month')}
           value={money(income.total_minor, currency)}
-          hint={`${money(income.previous_total_minor, currency)} ${periodWord[period]}`}
+          hint={`${money(income.previous_total_minor, currency)} ${earlier}`}
         >
           <Delta pct={income.change_pct} />
         </StatCard>
         <StatCard
           label="Lipia"
           value={money(income.lipia_minor, currency)}
-          hint={`${income.lipia_count} oda kwenye portal · ${lipiaShare}% ya mapato`}
+          hint={`${income.lipia_count} ${sw('oda kwenye portal', 'portal orders')} · ${lipiaShare}% ${sw('ya mapato', 'of income')}`}
           to="/collections"
         />
         <StatCard
-          label="Kadi zilizotumika"
+          label={sw('Vocha zilizotumika', 'Used vouchers')}
           value={money(income.kadi_minor, currency)}
-          hint={`${income.kadi_count} kadi ziliingia Wi‑Fi`}
+          hint={`${income.kadi_count} ${sw('kadi ziliingia Wi‑Fi', 'cards joined Wi‑Fi')}`}
           to="/collections"
         />
         <StatCard
-          label="Tangu mwanzo"
+          label={sw('Tangu mwanzo', 'Since the start')}
           value={money(income.lifetime_minor, currency)}
-          hint={`Mwezi huu ${money(income.month_minor, currency)} · leo ${money(income.today_minor, currency)}`}
+          hint={`${sw('Mwezi huu', 'This month')} ${money(income.month_minor, currency)} · ${sw('leo', 'today')} ${money(income.today_minor, currency)}`}
         />
       </div>
       <Section
-        title="Siku 14 — Lipia + kadi"
+        title={sw('Siku 14 — Lipia + kadi', '14 days — Lipia + cards')}
         action={
           <Link to="/collections" className="text-sm font-semibold text-brand-700 hover:underline">
-            Collections kwa site / wakala
+            {sw('Makusanyo kwa eneo / wakala', 'Collections by site / agent')}
           </Link>
         }
       >
-        <Suspense fallback={<p className="text-sm text-ink-700">Inapakia chati…</p>}>
-          <RevenueChart series={data.series} currency={currency} empty="Hakuna mauzo katika dirisha hili." />
+        <Suspense fallback={<p className="text-sm text-ink-700">{sw('Inapakia chati…', 'Loading chart…')}</p>}>
+          <RevenueChart series={data.series} currency={currency} empty={sw('Hakuna mauzo katika dirisha hili.', 'No sales in this window.')} />
         </Suspense>
       </Section>
     </div>
@@ -126,47 +123,48 @@ function Income({ data, currency, period }: { data: Insights; currency: string; 
 }
 
 function Customers({ data }: { data: Insights }) {
+  const { sw } = usePrefs();
   const c = data.customers;
   const offline = Math.max(0, c.total - c.online_now);
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <StatCard
-          label="Mtandaoni sasa"
+          label={sw('Mtandaoni sasa', 'Online now')}
           value={c.online_now}
-          hint={`${c.sessions_open} session wazi`}
+          hint={`${c.sessions_open} ${sw('session wazi', 'open sessions')}`}
           to="/sessions"
         />
-        <StatCard label="Hawapo mtandaoni" value={offline} hint="Wana namba, hawana session sasa" to="/customers" />
-        <StatCard label="Hai" value={c.hai} hint={`${c.kimya} kimya — hawana bundle`} to="/customers" />
+        <StatCard label={sw('Hawapo mtandaoni', 'Not online')} value={offline} hint={sw('Wana namba, hawana session sasa', 'They have a number, no session now')} to="/customers" />
+        <StatCard label={sw('Hai', 'Active')} value={c.hai} hint={`${c.kimya} ${sw('kimya — hawana kifurushi', 'quiet — no package')}`} to="/customers" />
         <StatCard
-          label="Wateja wapya"
+          label={sw('Wateja wapya', 'New customers')}
           value={c.new_in_period}
-          hint={`${c.new_today} leo · ${c.repeat_buyers} wanaorudia`}
+          hint={`${c.new_today} ${sw('leo', 'today')} · ${c.repeat_buyers} ${sw('wanaorudia', 'returning')}`}
           to="/customers"
         />
       </div>
       <Section
-        title="Wateja"
+        title={sw('Wateja', 'Customers')}
         action={
           <Link to="/customers" className="text-sm font-semibold text-brand-700 hover:underline">
-            Orodha
+            {sw('Orodha', 'List')}
           </Link>
         }
       >
         <Meter
           segments={[
-            { label: 'Mtandaoni', value: c.online_now, className: 'bg-emerald-500' },
-            { label: 'Hai bila session', value: Math.max(0, c.hai - c.online_now), className: 'bg-brand-600' },
-            { label: 'Kimya', value: c.kimya, className: 'bg-slate-300' },
+            { label: sw('Mtandaoni', 'Online'), value: c.online_now, className: 'bg-emerald-500' },
+            { label: sw('Hai bila session', 'Active, no session'), value: Math.max(0, c.hai - c.online_now), className: 'bg-brand-600' },
+            { label: sw('Kimya', 'Quiet'), value: c.kimya, className: 'bg-slate-300' },
           ]}
         />
         {c.idle > 0 && (
           <p className="mt-3 text-sm text-ink-700">
-            {c.idle} hawajaonekana kwa siku {c.idle_days}.{' '}
-            <Link to="/campaigns" className="font-semibold text-brand-700 hover:underline">
-              Tuma notice
+            {c.idle} {sw('hawajaonekana kwa siku', 'have not been seen for')} {c.idle_days} {sw('siku', 'days')}.{' '}
+            <Link to="/settings" className="font-semibold text-brand-700 hover:underline">
+              {sw('Tuma tangazo', 'Send a notice')}
             </Link>
           </p>
         )}
@@ -176,6 +174,7 @@ function Customers({ data }: { data: Insights }) {
 }
 
 function Stock({ data, currency }: { data: Insights; currency: string }) {
+  const { sw } = usePrefs();
   const s = data.stock;
   const risk = s.expiring_soon > 0 || s.dead_stock > 0;
 
@@ -185,41 +184,41 @@ function Stock({ data, currency }: { data: Insights; currency: string }) {
         <Callout tone="amber">
           {s.expiring_soon > 0 && (
             <>
-              Kadi {s.expiring_soon} ({money(s.expiring_soon_value_minor, currency)}) zinaisha ndani ya siku {s.soon_days} — uza kwanza.{' '}
+              {sw('Kadi', 'Cards')} {s.expiring_soon} ({money(s.expiring_soon_value_minor, currency)}) {sw('zinaisha ndani ya siku', 'expire within')} {s.soon_days} {sw('siku — uza kwanza.', 'days — sell these first.')}{' '}
             </>
           )}
           {s.dead_stock > 0 && (
             <>
-              Kadi {s.dead_stock} ({money(s.dead_stock_value_minor, currency)}) zimeshapitwa na muda bila kuuzwa.
+              {sw('Kadi', 'Cards')} {s.dead_stock} ({money(s.dead_stock_value_minor, currency)}) {sw('zimeshapitwa na muda bila kuuzwa.', 'expired on the shelf unsold.')}
             </>
           )}
         </Callout>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Hazijauzwa" value={s.unused} hint={`${s.in_office} ofisini · ${s.at_counter} kwa mawakala`} to="/batches" />
-        <StatCard label="Zinatumika" value={s.active} hint="Wateja wako ndani ya muda" />
-        <StatCard label="Zimeisha muda" value={s.expired} hint={s.time_up > 0 ? `${s.time_up} muda umeisha sasa hivi` : 'Vocha zilizopitwa na muda'} />
-        <StatCard label="Zimetumika zote" value={s.exhausted} hint={`${s.disabled} zilizozuiwa`} />
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <StatCard label={sw('Hazijauzwa', 'Unsold')} value={s.unused} hint={`${s.in_office} ${sw('ofisini', 'in the office')} · ${s.at_counter} ${sw('kwa mawakala', 'with agents')}`} to="/batches" />
+        <StatCard label={sw('Zinatumika', 'In use')} value={s.active} hint={sw('Wateja wako ndani ya muda', 'Customers are still within time')} />
+        <StatCard label={sw('Zimeisha muda', 'Expired')} value={s.expired} hint={s.time_up > 0 ? `${s.time_up} ${sw('muda umeisha sasa hivi', 'just ran out')}` : sw('Vocha zilizopitwa na muda', 'Vouchers past their time')} />
+        <StatCard label={sw('Zimetumika zote', 'Fully used')} value={s.exhausted} hint={`${s.disabled} ${sw('zilizozuiwa', 'blocked')}`} />
       </div>
       <Section
-        title="Hali ya kadi"
+        title={sw('Hali ya kadi', 'Card status')}
         action={
           <Link to="/batches" className="text-sm font-semibold text-brand-700 hover:underline">
-            Packs
+            {sw('Vocha', 'Vouchers')}
           </Link>
         }
       >
         <Meter
           segments={[
-            { label: 'Hazijauzwa', value: s.unused, className: 'bg-brand-600' },
-            { label: 'Zinatumika', value: s.active, className: 'bg-emerald-500' },
-            { label: 'Zimetumika', value: s.exhausted, className: 'bg-slate-400' },
-            { label: 'Muda umeisha', value: s.expired, className: 'bg-amber-400' },
-            { label: 'Zimezuiwa', value: s.disabled, className: 'bg-slate-300' },
+            { label: sw('Hazijauzwa', 'Unsold'), value: s.unused, className: 'bg-brand-600' },
+            { label: sw('Zinatumika', 'In use'), value: s.active, className: 'bg-emerald-500' },
+            { label: sw('Zimetumika', 'Used'), value: s.exhausted, className: 'bg-slate-400' },
+            { label: sw('Muda umeisha', 'Expired'), value: s.expired, className: 'bg-amber-400' },
+            { label: sw('Zimezuiwa', 'Blocked'), value: s.disabled, className: 'bg-slate-300' },
           ]}
         />
         <p className="mt-3 text-sm text-ink-700">
-          Kadi {s.at_counter} ({money(s.at_counter_value_minor, currency)}) zimechapishwa na mawakala lakini hazijaingia Wi‑Fi bado.
+          {sw('Kadi', 'Cards')} {s.at_counter} ({money(s.at_counter_value_minor, currency)}) {sw('zimechapishwa na mawakala lakini hazijaingia Wi‑Fi bado.', 'were printed by agents and have not joined Wi‑Fi yet.')}
         </p>
       </Section>
     </div>
@@ -227,22 +226,23 @@ function Stock({ data, currency }: { data: Insights; currency: string }) {
 }
 
 function Agents({ data, currency }: { data: Insights; currency: string }) {
+  const { sw } = usePrefs();
   const rows = data.agents;
 
   return (
     <Section
-      title="Mapato ya mawakala"
+      title={sw('Mapato ya mawakala', 'Agent income')}
       action={
-        <Link to="/agents" className="text-sm font-semibold text-brand-700 hover:underline">
-          Mawakala
+        <Link to="/sites" className="text-sm font-semibold text-brand-700 hover:underline">
+          {sw('Mawakala', 'Agents')}
         </Link>
       }
     >
       {rows.length === 0 ? (
         <Empty>
-          Hakuna wakala bado.{' '}
-          <Link to="/agents" className="font-semibold text-brand-700 hover:underline">
-            Mwalike wakala
+          {sw('Hakuna wakala bado.', 'No agents yet.')}{' '}
+          <Link to="/sites" className="font-semibold text-brand-700 hover:underline">
+            {sw('Ongeza wakala', 'Add an agent')}
           </Link>
         </Empty>
       ) : (
@@ -251,25 +251,25 @@ function Agents({ data, currency }: { data: Insights; currency: string }) {
             <table className="console-table">
               <thead>
                 <tr>
-                  <th>Wakala</th>
-                  <th>Site</th>
-                  <th className="text-right">Pesa mkononi</th>
-                  <th className="text-right">Imefika mtandaoni</th>
-                  <th className="text-right">Stock</th>
+                  <th>{sw('Wakala', 'Agent')}</th>
+                  <th>{sw('Eneo', 'Site')}</th>
+                  <th className="text-right">{sw('Pesa mkononi', 'Cash in hand')}</th>
+                  <th className="text-right">{sw('Imefika mtandaoni', 'Reached Wi‑Fi')}</th>
+                  <th className="text-right">{sw('Stock', 'Stock')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((agent) => (
                   <tr key={agent.id}>
                     <td className="font-semibold text-ink-900">{agent.name}</td>
-                    <td className="text-ink-700">{agent.sites.join(', ') || 'Hakuna site'}</td>
+                    <td className="text-ink-700">{agent.sites.join(', ') || sw('Hakuna eneo', 'No site')}</td>
                     <td className="text-right">
                       <span className="font-semibold text-ink-900">{money(agent.sold_minor, currency)}</span>
-                      <span className="block text-xs text-ink-700">{agent.sold_count} kadi</span>
+                      <span className="block text-xs text-ink-700">{agent.sold_count} {sw('kadi', 'cards')}</span>
                     </td>
                     <td className="text-right">
                       <span className="text-ink-900">{money(agent.delivered_minor, currency)}</span>
-                      <span className="block text-xs text-ink-700">{agent.delivered_count} kadi</span>
+                      <span className="block text-xs text-ink-700">{agent.delivered_count} {sw('kadi', 'cards')}</span>
                     </td>
                     <td className="text-right">
                       <Badge tone={agent.stock > 0 ? 'green' : 'amber'}>{agent.stock}</Badge>
@@ -280,8 +280,7 @@ function Agents({ data, currency }: { data: Insights; currency: string }) {
             </table>
           </div>
           <p className="mt-3 text-sm text-ink-700">
-            <strong>Pesa mkononi</strong> ni kadi alizochapisha na kuuza kipindi hiki. <strong>Imefika mtandaoni</strong> ni
-            zilizotumika kwenye Wi‑Fi — hizo ndizo zinazoingia Collections zako.
+            <strong>{sw('Pesa mkononi', 'Cash in hand')}</strong> {sw('ni kadi alizochapisha na kuuza kipindi hiki.', 'is cards they printed and sold this period.')} <strong>{sw('Imefika mtandaoni', 'Reached Wi‑Fi')}</strong> {sw('ni zilizotumika kwenye Wi‑Fi — hizo ndizo zinazoingia makusanyo.', 'is cards used on Wi‑Fi — those are what land in collections.')}
           </p>
         </>
       )}
@@ -290,22 +289,23 @@ function Agents({ data, currency }: { data: Insights; currency: string }) {
 }
 
 function Sites({ data, currency }: { data: Insights; currency: string }) {
+  const { sw } = usePrefs();
   const rows = data.sites;
 
   return (
     <Section
-      title="Sites"
+      title={sw('Maeneo', 'Sites')}
       action={
         <Link to="/sites" className="text-sm font-semibold text-brand-700 hover:underline">
-          Sites
+          {sw('Maeneo', 'Sites')}
         </Link>
       }
     >
       {rows.length === 0 ? (
         <Empty>
-          Hakuna site bado.{' '}
+          {sw('Hakuna eneo bado.', 'No site yet.')}{' '}
           <Link to="/sites" className="font-semibold text-brand-700 hover:underline">
-            Weka shop
+            {sw('Ongeza eneo', 'Add a site')}
           </Link>
         </Empty>
       ) : (
@@ -315,13 +315,13 @@ function Sites({ data, currency }: { data: Insights; currency: string }) {
               <div className="min-w-0">
                 <p className="font-semibold text-ink-900">{site.name}</p>
                 <p className="text-sm text-ink-700">
-                  {site.online} mtandaoni · kadi {site.cards_left} · {site.routers} router
+                  {site.online} {sw('mtandaoni', 'online')} · {sw('kadi', 'cards')} {site.cards_left} · {site.routers} {sw('vifaa', 'devices')}
                 </p>
               </div>
               <div className="text-right">
                 <p className="font-semibold text-ink-900">{money(site.total_minor, currency)}</p>
                 {site.router_quiet ? (
-                  <Badge tone="amber">Router kimya</Badge>
+                  <Badge tone="amber">{sw('Router kimya', 'Router quiet')}</Badge>
                 ) : (
                   <p className="text-xs text-ink-700">
                     Lipia {money(site.lipia_minor, currency)}
@@ -337,20 +337,21 @@ function Sites({ data, currency }: { data: Insights; currency: string }) {
 }
 
 function Packages({ data, currency }: { data: Insights; currency: string }) {
+  const { sw } = usePrefs();
   const rows = data.plans;
   const top = rows[0]?.total_minor ?? 0;
 
   return (
     <Section
-      title="Packages zinazouzwa"
+      title={sw('Vifurushi vinavyouzwa', 'Packages selling')}
       action={
         <Link to="/plans" className="text-sm font-semibold text-brand-700 hover:underline">
-          Packages
+          {sw('Vifurushi', 'Packages')}
         </Link>
       }
     >
       {rows.length === 0 ? (
-        <Empty>Hakuna mauzo kwenye kipindi hiki.</Empty>
+        <Empty>{sw('Hakuna mauzo kwenye kipindi hiki.', 'No sales in this period.')}</Empty>
       ) : (
         <ul className="space-y-3">
           {rows.slice(0, 6).map((plan) => (
@@ -366,7 +367,7 @@ function Packages({ data, currency }: { data: Insights; currency: string }) {
                 />
               </div>
               <p className="mt-1 text-xs text-ink-700">
-                {plan.kadi_count} kadi · {plan.lipia_count} Lipia
+                {plan.kadi_count} {sw('kadi', 'cards')} · {plan.lipia_count} Lipia
               </p>
             </li>
           ))}
