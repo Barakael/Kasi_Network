@@ -31,6 +31,7 @@ class SettingsController
             'primary_color' => ['sometimes', 'nullable', 'string', 'max:16'],
             'palmpesa_api_token' => ['sometimes', 'nullable', 'string', 'max:255'],
             'palmpesa_user_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'palmpesa_vendor' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
         if (array_key_exists('support_phone', $validated) && filled($validated['support_phone'])) {
@@ -44,7 +45,7 @@ class SettingsController
         }
 
         if (array_key_exists('palmpesa_api_token', $validated) && $validated['palmpesa_api_token'] === '') {
-            $validated['palmpesa_api_token'] = null;
+            unset($validated['palmpesa_api_token']);
         }
 
         /** @var Tenant $tenant */
