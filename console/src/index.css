@@ -1,20 +1,76 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-brand-50: oklch(0.97 0.02 250);
-  --color-brand-100: oklch(0.93 0.04 250);
-  --color-brand-400: oklch(0.72 0.14 250);
-  --color-brand-500: oklch(0.62 0.17 250);
-  --color-brand-600: oklch(0.53 0.18 252);
-  --color-brand-700: oklch(0.45 0.16 254);
-  --color-ink-950: oklch(0.17 0.03 258);
-  --color-ink-900: oklch(0.22 0.03 258);
-  --color-ink-800: oklch(0.28 0.03 258);
-  --color-ink-700: oklch(0.36 0.03 258);
+  --color-brand-50: oklch(0.96 0.03 145);
+  --color-brand-100: oklch(0.92 0.05 145);
+  --color-brand-400: oklch(0.72 0.13 150);
+  --color-brand-500: oklch(0.58 0.13 152);
+  --color-brand-600: oklch(0.46 0.11 152);
+  --color-brand-700: oklch(0.38 0.09 152);
+  --color-ink-950: oklch(0.18 0.02 150);
+  --color-ink-900: oklch(0.24 0.02 150);
+  --color-ink-800: oklch(0.32 0.02 150);
+  --color-ink-700: oklch(0.42 0.02 150);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --color-brand-50: oklch(0.28 0.04 250);
+  --color-brand-100: oklch(0.32 0.05 250);
+  --color-brand-400: oklch(0.74 0.12 150);
+  --color-brand-500: oklch(0.68 0.12 152);
+  --color-brand-600: oklch(0.55 0.11 152);
+  --color-brand-700: oklch(0.62 0.1 152);
+  --color-ink-950: oklch(0.96 0.012 250);
+  --color-ink-900: oklch(0.93 0.012 250);
+  --color-ink-800: oklch(0.86 0.015 250);
+  --color-ink-700: oklch(0.74 0.02 250);
 }
 
 html {
   color-scheme: light;
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] .bg-slate-50,
+html[data-theme='dark'] .console-rail-stat {
+  background: #121820;
+}
+
+html[data-theme='dark'] .bg-white,
+html[data-theme='dark'] .console-aside {
+  background: #1a2332;
+  color: var(--color-ink-900);
+}
+
+html[data-theme='dark'] .border-slate-200,
+html[data-theme='dark'] .border-slate-300,
+html[data-theme='dark'] .console-aside,
+html[data-theme='dark'] .console-aside-brand,
+html[data-theme='dark'] .console-aside-foot {
+  border-color: #2c3a4f;
+}
+
+html[data-theme='dark'] .bg-slate-100,
+html[data-theme='dark'] .agent-nav-count {
+  background: #243044;
+}
+
+html[data-theme='dark'] .agent-nav-link:hover {
+  background: #243044;
+}
+
+.pref-chip {
+  min-height: 2.25rem;
+  border-radius: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-ink-800);
+}
+
+.pref-chip-on {
+  background: var(--color-brand-600);
+  color: #fff;
 }
 
 body {
@@ -101,7 +157,7 @@ body {
 
 .console-table {
   width: 100%;
-  min-width: 36rem;
+  max-width: 100%;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
@@ -115,16 +171,25 @@ body {
   text-transform: uppercase;
   color: var(--color-ink-700);
   border-bottom: 1px solid #e2e8f0;
+  overflow-wrap: break-word;
 }
 
 .console-table td {
   padding: 0.75rem 0.75rem 0.75rem 0;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
+  overflow-wrap: break-word;
 }
 
 .console-table tr:last-child td {
   border-bottom: none;
+}
+
+@media (max-width: 639px) {
+  .console-table th,
+  .console-table td {
+    padding-right: 0.35rem;
+  }
 }
 
 .agent-nav-link {
@@ -174,6 +239,46 @@ body {
   color: #fff;
 }
 
+.console-mobile-header {
+  background: #fff;
+  padding-top: env(safe-area-inset-top);
+}
+
+html[data-theme='dark'] .console-mobile-header {
+  background: #1a2332;
+  color: var(--color-ink-900);
+}
+
+.console-tabbar {
+  background: var(--color-brand-600);
+  border-top-color: var(--color-brand-700);
+  color: #fff;
+}
+
+html[data-theme='dark'] .console-tabbar {
+  background: #121820;
+  border-top-color: #2c3a4f;
+}
+
+.console-tabbar .agent-tab.agent-nav-link-on,
+.console-tabbar .agent-tab.agent-nav-link-on:hover {
+  background: #fff;
+  color: var(--color-brand-700);
+}
+
+.console-tabbar-5 .agent-tab {
+  font-size: 0.62rem;
+  line-height: 1.15;
+  padding-right: 0.05rem;
+  padding-left: 0.05rem;
+}
+
+html[data-theme='dark'] .console-tabbar .agent-tab.agent-nav-link-on,
+html[data-theme='dark'] .console-tabbar .agent-tab.agent-nav-link-on:hover {
+  background: var(--color-brand-600);
+  color: #fff;
+}
+
 .agent-tab {
   display: flex;
   min-height: 3.25rem;
@@ -185,7 +290,7 @@ body {
   padding: 0.35rem 0.15rem;
   font-size: 0.7rem;
   font-weight: 700;
-  color: var(--color-ink-800);
+  color: #fff;
   text-decoration: none;
 }
 
