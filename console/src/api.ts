@@ -1,6 +1,6 @@
 const TOKEN_KEY = 'kasi.console.token';
 
-export type Role = 'owner' | 'staff' | 'agent' | 'platform_admin';
+export type Role = 'owner' | 'agent' | 'platform_admin';
 
 export type Tenant = {
   uuid: string;
@@ -10,6 +10,8 @@ export type Tenant = {
   support_phone?: string | null;
   logo_url?: string | null;
   palmpesa_configured?: boolean;
+  palmpesa_user_id?: string | null;
+  palmpesa_vendor?: string | null;
   accepts_online_payments: boolean;
   status?: string;
 };
@@ -56,6 +58,7 @@ export type Plan = {
 export type Site = {
   id: number;
   name: string;
+  abbreviation?: string | null;
   ssid: string | null;
   nas_identifier: string;
   status: string;
@@ -68,6 +71,7 @@ export type Customer = {
   phone: string;
   phone_local: string;
   status: 'hai' | 'kimya';
+  payment?: 'paid' | 'expired' | 'new';
   site?: Site | null;
   last_mac?: string | null;
   first_seen_at?: string | null;
@@ -301,6 +305,26 @@ export type Insights = {
 export type Paginated<T> = {
   data: T[];
   meta?: { current_page: number; last_page: number; total: number };
+  counts?: { all: number; online: number; paid: number; expired: number };
+};
+
+export type BillingSummary = {
+  days_left: number;
+  days_used: number;
+  anchor_at: string;
+  last_paid_at: string | null;
+  amount_minor: number | null;
+  currency: string;
+  status: string;
+  payee_name: string | null;
+  account_number: string | null;
+  instructions: string | null;
+};
+
+export type PlatformPaymentDetails = {
+  payee_name: string | null;
+  account_number: string | null;
+  instructions: string | null;
 };
 
 type ApiError = Error & { status?: number };
@@ -460,13 +484,14 @@ export const api = {
     });
     return parse<{ data: Tenant }>(res);
   },
-  customers: (status?: string, siteId?: number, q?: string) => {
+  customers: (status?: string, siteId?: number, q?: string, page = 1) => {
     const params = new URLSearchParams();
-    if (status) params.set('status', status);
+    if (status && status !== 'all') params.set('status', status);
     if (siteId) params.set('site_id', String(siteId));
     if (q) params.set('q', q);
-    const query = params.toString();
-    return get<Paginated<Customer>>(`/api/v1/customers${query ? `?${query}` : ''}`);
+    params.set('per_page', '10');
+    params.set('page', String(page));
+    return get<Paginated<Customer>>(`/api/v1/customers?${params}`);
   },
   customer: (id: number) => get<{ data: Customer; unused_voucher: { id: number; plan: string | null } | null }>(`/api/v1/customers/${id}`),
   revealCustomerVoucher: (id: number) => send<{ code: string }>(`/api/v1/customers/${id}/reveal`, 'POST'),
@@ -482,6 +507,10 @@ export const api = {
   campaigns: () => get<{ data: Campaign[] }>('/api/v1/campaigns'),
   createCampaign: (payload: Record<string, unknown>) => send<{ data: Campaign }>('/api/v1/campaigns', 'POST', payload),
   invoices: () => get<Paginated<PlatformInvoice>>('/api/v1/billing/invoices'),
+  billingSummary: () => get<{ data: BillingSummary }>('/api/v1/billing/summary'),
+  platformPaymentDetails: () => get<{ data: PlatformPaymentDetails }>('/api/v1/platform/payment-details'),
+  updatePlatformPaymentDetails: (payload: PlatformPaymentDetails) =>
+    send<{ data: PlatformPaymentDetails }>('/api/v1/platform/payment-details', 'PATCH', payload),
   platformTenants: () => get<{ data: Tenant[] }>('/api/v1/platform/tenants'),
   createPlatformTenant: (payload: Record<string, unknown>) =>
     send<{ data: Tenant; admin: User; password: string }>('/api/v1/platform/tenants', 'POST', payload),
