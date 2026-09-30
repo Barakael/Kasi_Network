@@ -23,6 +23,7 @@ class CustomerResource extends JsonResource
             'phone' => $this->maskedPhone(),
             'phone_local' => $this->localPhone(),
             'status' => $this->resource->getAttribute('presence') ?? 'kimya',
+            'payment' => $this->resource->getAttributes()['payment'] ?? 'new',
             'last_package' => $this->resource->getAttribute('last_package'),
             'paid_via' => $this->resource->getAttribute('paid_via'),
             'has_unused_voucher' => (bool) $this->resource->getAttribute('has_unused_voucher'),
