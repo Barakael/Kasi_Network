@@ -104,9 +104,9 @@ class VoucherBatchTest extends TestCase
     }
 
     #[Test]
-    public function a_staff_member_cannot_be_assigned_stock_as_though_they_were_an_agent(): void
+    public function an_owner_cannot_be_assigned_stock_as_though_they_were_an_agent(): void
     {
-        $staff = User::factory()->for($this->tenant)->staff()->create();
+        $staff = User::factory()->for($this->tenant)->owner()->create();
 
         $this->actingAs($this->owner)
             ->postJson('/api/v1/voucher-batches', [
