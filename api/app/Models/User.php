@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
- * An operator's staff member, owner or counter agent.
+ * An operator's owner or counter agent.
  *
  * Deliberately does NOT use the BelongsToTenant global scope. Authentication has
  * to find a user by email before any tenant is known, and a global scope here
@@ -114,7 +114,7 @@ class User extends Authenticatable
 
     /**
      * Whether this user may change an operator's configuration: bundles, routers,
-     * staff and payment credentials.
+     * agents and payment credentials.
      */
     public function managesTenant(): bool
     {
