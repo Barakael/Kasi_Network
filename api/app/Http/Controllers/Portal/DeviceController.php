@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Portal;
 
+use App\Domain\Router\HotspotHostAuthorizer;
 use App\Domain\Router\HotspotHostReader;
 use App\Domain\Tenancy\PortalContext;
 use App\Domain\Voucher\MacBinder;
@@ -32,6 +33,7 @@ class DeviceController
         PortalContext $context,
         MacBinder $binder,
         VoucherCodeHasher $hasher,
+        HotspotHostAuthorizer $authorizer,
     ): JsonResponse {
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:32'],
@@ -47,6 +49,22 @@ class DeviceController
 
         $device = $binder->bind($voucher, $validated['mac'], 'portal', $validated['label'] ?? null);
 
-        return (new VoucherDeviceResource($device))->response()->setStatusCode(201);
+        $authorized = false;
+        $authorizeDetail = 'no_nas';
+
+        if ($context->nasDevice !== null) {
+            $result = $authorizer->authorize($context->nasDevice, $device->mac);
+            $authorized = $result['authorized'];
+            $authorizeDetail = $result['detail'] ?? null;
+        }
+
+        return response()->json([
+            'data' => (new VoucherDeviceResource($device))->resolve(),
+            'authorized' => $authorized,
+            'authorize_detail' => $authorizeDetail,
+            'message' => $authorized
+                ? 'Kifaa kimeunganishwa'
+                : 'Kifaa kimesajiliwa. Washa Wi‑Fi upya kwenye kifaa hicho.',
+        ], 201);
     }
 }
