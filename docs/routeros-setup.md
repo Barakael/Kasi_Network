@@ -20,7 +20,7 @@ Incoming CoA is required. Without it, quota enforcement can refuse the next logi
 ```
 /ip hotspot profile
 set [find] use-radius=yes radius-accounting=yes radius-interim-update=5m \
-    login-by=cookie,http-chap,mac-cookie,https \
+    login-by=cookie,http-chap,https,mac,mac-cookie \
     http-cookie-lifetime=1d mac-cookie-timeout=4w2d \
     radius-mac-format=XX:XX:XX:XX:XX:XX radius-mac-authentication=yes \
     radius-location-id="<site nas_identifier>"
@@ -67,7 +67,14 @@ A static example lives at `router-config/login.html`. The console fills in the r
 
 ## RouterOS API (optional)
 
-Used only for “nearby devices” when binding a TV from the portal. Create a dedicated user with read access to `/ip hotspot host`. Store host, port, username and password on the NAS in the console. Leave them empty if the site only sells printed vouchers.
+Used for “nearby devices” and to authorize a bound MAC immediately from the portal.
+Create a dedicated user with access to `/ip hotspot host` and `/ip hotspot active`
+(read + write). Store host, port, username and password on the NAS in the console.
+Leave them empty if the site only sells printed vouchers.
+
+`login-by` must include `mac` (with `radius-mac-authentication=yes`) or bound TVs
+and tablets stay associated to Wi‑Fi but never get a hotspot session — Android then
+shows “You’re not connected to the internet.”
 
 ## Checklist
 
