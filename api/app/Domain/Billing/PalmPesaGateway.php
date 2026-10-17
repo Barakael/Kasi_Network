@@ -97,7 +97,13 @@ final readonly class PalmPesaGateway
 
     private function http(Tenant $tenant): PendingRequest
     {
-        return Http::baseUrl(rtrim((string) config('kasi.palmpesa.base_url'), '/'))
+        $baseUrl = rtrim((string) config('kasi.palmpesa.base_url'), '/');
+
+        if ($baseUrl === '' || ! str_contains($baseUrl, '://')) {
+            throw new PalmPesaException('PalmPesa base URL is not configured (PALMPESA_BASE_URL).');
+        }
+
+        return Http::baseUrl($baseUrl)
             ->withToken($this->tokenFor($tenant))
             ->acceptJson()
             ->asJson()
