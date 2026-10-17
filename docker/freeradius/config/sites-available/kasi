@@ -17,6 +17,9 @@ server kasi {
 	}
 
 	authorize {
+		# Uppercase CSI before CSI locks / MAC rewrite see it.
+		normalize_calling_station_id
+
 		# MAC-as-username (RouterOS radius-mac-authentication) is rewritten
 		# to the parent voucher so quota and radacct stay on one identity.
 		rewrite_mac_username
