@@ -3,15 +3,148 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#e4f3e7" />
+    <meta name="theme-color" content="#2f5f3d" />
     <meta name="color-scheme" content="light" />
     <meta name="robots" content="noindex" />
     <!-- No external font or CDN references: the client is unauthenticated and
          only the walled-garden hosts are reachable at this point. -->
-    <title>Get online</title>
+    <title>Inasubiri…</title>
+    <style>
+      /* First paint before the JS bundle: same green splash as ConnectingSplash. */
+      html,
+      body,
+      #root {
+        height: 100%;
+        min-height: 100%;
+        min-height: 100dvh;
+        margin: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(120% 80% at 50% -10%, #6db87f 0%, transparent 55%),
+          radial-gradient(90% 70% at 100% 100%, #1c3326 0%, transparent 50%),
+          linear-gradient(165deg, #3a7a4c 0%, #2f5f3d 48%, #1c3326 100%);
+      }
+      .boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: grid;
+        place-items: center;
+        width: 100%;
+        min-height: 100%;
+        min-height: 100dvh;
+        margin: 0;
+        padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+        color: #eaf6ee;
+        text-align: center;
+        font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+        background:
+          radial-gradient(120% 80% at 50% -10%, #6db87f 0%, transparent 55%),
+          radial-gradient(90% 70% at 100% 100%, #1c3326 0%, transparent 50%),
+          linear-gradient(165deg, #3a7a4c 0%, #2f5f3d 48%, #1c3326 100%);
+      }
+      .boot-splash-inner {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.25rem;
+      }
+      .boot-splash-glow {
+        position: absolute;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgb(255 255 255 / 0.22) 0%, transparent 68%);
+        filter: blur(2px);
+        animation: boot-breathe 2.4s ease-in-out infinite;
+        pointer-events: none;
+      }
+      .boot-splash-mark {
+        position: relative;
+        z-index: 1;
+        width: 7.25rem;
+        height: 7.25rem;
+        display: grid;
+        place-items: center;
+        border-radius: 1.75rem;
+        background: rgb(255 255 255 / 0.14);
+        border: 1px solid rgb(255 255 255 / 0.28);
+        box-shadow:
+          0 18px 40px rgb(16 36 24 / 0.35),
+          inset 0 1px 0 rgb(255 255 255 / 0.25);
+      }
+      .boot-splash-mark svg {
+        width: 4.25rem;
+        height: 4.25rem;
+        display: block;
+      }
+      .boot-splash-spin {
+        position: absolute;
+        inset: -0.45rem;
+        border-radius: 2rem;
+        border: 2.5px solid rgb(255 255 255 / 0.18);
+        border-top-color: #eaf6ee;
+        animation: boot-spin 0.85s linear infinite;
+      }
+      .boot-splash-brand {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .boot-splash-status {
+        margin: 0;
+        font-size: 0.95rem;
+        letter-spacing: 0.04em;
+        opacity: 0.92;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes boot-breathe {
+        0%,
+        100% {
+          transform: scale(0.92);
+          opacity: 0.55;
+        }
+        50% {
+          transform: scale(1.08);
+          opacity: 0.9;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-splash" role="status" aria-live="polite">
+        <div class="boot-splash-inner">
+          <div class="boot-splash-glow" aria-hidden="true"></div>
+          <div class="boot-splash-mark">
+            <span class="boot-splash-spin" aria-hidden="true"></span>
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.12)" />
+              <path
+                d="M32 14c8.5 6.2 12.5 12.8 12.5 19.2 0 7.4-5.6 12.8-12.5 12.8S19.5 40.6 19.5 33.2C19.5 26.8 23.5 20.2 32 14Z"
+                fill="#eaf6ee"
+              />
+              <path d="M32 22v24" stroke="#2f5f3d" stroke-width="2.5" stroke-linecap="round" />
+              <path
+                d="M22 36c6 2.5 14 2.5 20 0"
+                stroke="#2f5f3d"
+                stroke-width="2"
+                stroke-linecap="round"
+                opacity="0.7"
+              />
+            </svg>
+          </div>
+          <p class="boot-splash-brand">HasNetworks</p>
+          <p class="boot-splash-status">Inasubiri ipakie…</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
