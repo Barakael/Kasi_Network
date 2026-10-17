@@ -17,17 +17,29 @@
 html {
   -webkit-text-size-adjust: 100%;
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #6db87f 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, #1c3326 0%, transparent 50%),
+    linear-gradient(165deg, #3a7a4c 0%, #2f5f3d 48%, #1c3326 100%);
 }
 
 body,
 #root {
   margin: 0;
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
   color: var(--color-leaf-900);
   font-family: var(--font-body);
-  background: #cfe6d4;
+  /* Match the boot splash until the shell paints — avoids a pale/white flash. */
+  background:
+    radial-gradient(120% 80% at 50% -10%, #6db87f 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, #1c3326 0%, transparent 50%),
+    linear-gradient(165deg, #3a7a4c 0%, #2f5f3d 48%, #1c3326 100%);
 }
 
 .portal-shell {
@@ -134,6 +146,76 @@ body,
   border-top: 1px solid rgb(200 230 207 / 0.85);
 }
 
+.portal-sheet-head {
+  flex-shrink: 0;
+}
+
+.portal-choices {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow: auto;
+}
+
+.portal-choice {
+  display: flex;
+  width: 100%;
+  min-height: 4.1rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  border: 1px solid rgb(157 206 168 / 0.65);
+  border-radius: 1rem;
+  background: #fff;
+  padding: 0.8rem 1rem;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.portal-choice:hover {
+  border-color: var(--color-leaf-500);
+  background: var(--color-leaf-50);
+}
+
+.portal-choice-kicker {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-leaf-600);
+}
+
+.portal-choice-title {
+  margin-top: 0.1rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-leaf-900);
+}
+
+.portal-choice-copy {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: var(--color-leaf-700);
+}
+
+.portal-choice-go {
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--color-leaf-600);
+}
+
+.portal-foot {
+  flex-shrink: 0;
+}
+
 .portal-panel-title {
   flex-shrink: 0;
   font-family: var(--font-display);
@@ -154,38 +236,163 @@ body,
   color: var(--color-leaf-700);
 }
 
+.portal-home {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0.55rem;
+  overflow: hidden;
+}
+
 .portal-plans {
   display: flex;
   min-height: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .portal-plans > li {
   display: flex;
-  min-height: 0;
-  flex: 1 1 0;
+  flex-shrink: 0;
 }
 
 .portal-plan {
   display: flex;
   width: 100%;
-  min-height: 3.35rem;
+  min-height: 2.85rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
   border: 1px solid rgb(157 206 168 / 0.65);
-  border-radius: 1rem;
+  border-radius: 0.9rem;
   background: #fff;
-  padding: 0.7rem 1rem;
+  padding: 0.55rem 0.85rem;
   text-align: left;
-  font-size: 1.12rem;
+  color: inherit;
+  cursor: pointer;
 }
 
 .portal-plan-on {
   border-color: var(--color-leaf-600);
   background: var(--color-leaf-100);
+}
+
+.portal-plan-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.portal-plan-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-leaf-900);
+}
+
+.portal-plan-meta {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--color-leaf-700);
+}
+
+.portal-plan-price {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-leaf-700);
+}
+
+.portal-pay {
+  flex-shrink: 0;
+}
+
+.portal-phone-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.portal-phone-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.portal-send {
+  flex-shrink: 0;
+  width: 2.9rem;
+  min-height: 2.9rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(157 206 168 / 0.75);
+  background: #fff;
+  color: var(--color-leaf-600);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.portal-send:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.portal-send-ready {
+  border-color: var(--color-leaf-600);
+  background: var(--color-leaf-600);
+  color: #fff;
+}
+
+.portal-send-ready:hover:not(:disabled) {
+  background: var(--color-leaf-700);
+}
+
+.portal-send-full {
+  width: 100%;
+  font-size: 1rem;
+}
+
+.portal-secondary {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgb(200 230 207 / 0.85);
+}
+
+.portal-secondary-link {
+  display: flex;
+  width: 100%;
+  min-height: 3.1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  border: 1px solid rgb(157 206 168 / 0.7);
+  border-radius: 0.95rem;
+  background: #fff;
+  padding: 0.65rem 0.9rem;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.portal-secondary-link:hover {
+  border-color: var(--color-leaf-500);
+  background: var(--color-leaf-50);
+}
+
+.portal-secondary-link .portal-choice-title {
+  font-size: 1rem;
+}
+
+.portal-secondary-link .portal-choice-go {
+  font-size: 1.2rem;
 }
 
 .portal-field {
@@ -242,6 +449,9 @@ body,
   z-index: 50;
   display: grid;
   place-items: center;
+  width: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
   margin: 0;
   padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
   color: #eaf6ee;
@@ -334,7 +544,9 @@ body,
   }
 }
 
-@media (min-width: 960px) and (min-height: 560px) {
+/* macOS / Windows CNA windows are wide but often short (~480–560px tall).
+   Use a full-bleed split as soon as width allows — never a floating phone card. */
+@media (min-width: 640px) {
   body,
   #root {
     background: #14241b;
@@ -342,8 +554,11 @@ body,
 
   .portal-shell {
     display: grid;
+    width: 100%;
     max-width: none;
-    grid-template-columns: minmax(0, 1fr) minmax(22rem, 24.5rem);
+    height: 100%;
+    max-height: none;
+    grid-template-columns: minmax(0, 1fr) minmax(19.5rem, 26rem);
     grid-template-rows: minmax(0, 1fr);
     background: transparent;
   }
@@ -357,21 +572,93 @@ body,
     height: 100%;
   }
 
+  .portal-hero img,
+  .portal-hero picture {
+    object-position: center 35%;
+  }
+
+  .portal-hero-shade {
+    background:
+      linear-gradient(90deg, rgb(12 28 18 / 0.55) 0%, rgb(12 28 18 / 0.2) 48%, rgb(12 28 18 / 0.55) 100%),
+      linear-gradient(180deg, rgb(16 36 24 / 0.35) 0%, transparent 45%);
+  }
+
   .portal-hero-copy {
-    justify-content: flex-start;
+    justify-content: center;
     align-items: flex-start;
-    padding: 2.5rem calc(24.5rem + 2.5rem) 2rem 2.75rem;
+    max-width: calc(100% - 26rem);
+    padding: 1.5rem 1.75rem;
     text-align: left;
+  }
+
+  .portal-hero-copy .mx-auto {
+    margin-inline: 0;
+    max-width: 22rem;
   }
 
   .portal-sheet {
     grid-column: 2;
     grid-row: 1;
     z-index: 3;
-    margin: 1.1rem 1.1rem 1.1rem 0;
+    margin: 0;
+    height: 100%;
+    max-height: none;
     overflow: hidden;
-    border-radius: 1.2rem;
-    padding: 1rem 1rem 0.85rem;
-    box-shadow: 0 18px 44px rgb(8 18 12 / 0.3);
+    border-radius: 0;
+    padding: 1.15rem 1.25rem 0.9rem;
+    box-shadow: -16px 0 40px rgb(8 18 12 / 0.28);
+  }
+
+  .portal-block:not(.portal-home) {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .portal-home {
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 640px) and (max-height: 560px) {
+  .portal-hero-copy {
+    padding: 1rem 1.25rem;
+  }
+
+  .portal-hero-copy h1 {
+    font-size: 1.75rem !important;
+  }
+
+  .portal-sheet {
+    padding: 0.85rem 1rem 0.7rem;
+    gap: 0.45rem;
+  }
+
+  .portal-sheet-head .portal-brand {
+    font-size: 1.25rem !important;
+  }
+
+  .portal-sheet-head .text-sm {
+    display: none;
+  }
+
+  .portal-panel-title {
+    font-size: 1.1rem;
+  }
+
+  .portal-plan {
+    min-height: 2.45rem;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .portal-plan-meta {
+    display: none;
+  }
+
+  .portal-secondary-link {
+    min-height: 2.35rem;
+  }
+
+  .portal-secondary-link .portal-choice-kicker {
+    display: none;
   }
 }
