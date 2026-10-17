@@ -6,10 +6,12 @@ namespace App\Http\Controllers\Console;
 
 use App\Domain\Billing\TanzanianPhone;
 use App\Domain\Tenancy\AuditLogger;
+use App\Domain\Voucher\VoucherCode;
 use App\Http\Resources\TenantResource;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class SettingsController
@@ -29,6 +31,7 @@ class SettingsController
             'portal_name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'support_phone' => ['sometimes', 'nullable', 'string', 'max:20'],
             'primary_color' => ['sometimes', 'nullable', 'string', 'max:16'],
+            'voucher_code_charset' => ['sometimes', 'string', Rule::in(VoucherCode::charsets())],
             'palmpesa_api_token' => ['sometimes', 'nullable', 'string', 'max:255'],
             'palmpesa_user_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'palmpesa_vendor' => ['sometimes', 'nullable', 'string', 'max:64'],
