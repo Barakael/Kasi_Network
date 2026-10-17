@@ -1,6 +1,6 @@
 name: kasi-network
 
-# Production stack for net.wayda.co.tz. MySQL and Redis stay on the docker
+# Production stack for hasnetworks.co.tz. MySQL and Redis stay on the docker
 # network. Only the API (loopback) and FreeRADIUS (UDP 1812/1813) are published.
 
 services:
@@ -57,10 +57,8 @@ services:
     ports:
       - "1812:1812/udp"
       - "1813:1813/udp"
-      - "2083:2083/tcp"
     volumes:
       - ./freeradius/config:/opt/kasi-raddb:ro
-      - ./freeradius/certs:/opt/kasi-certs:ro
       - ./mysql/certs/ca.pem:/mysql-certs/ca.pem:ro
     command: ["radiusd", "-f", "-l", "stdout"]
     restart: unless-stopped
@@ -83,10 +81,10 @@ services:
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       REDIS_HOST: redis
       REDIS_CLIENT: predis
-      APP_URL: ${APP_URL:-https://net.wayda.co.tz}
-      PORTAL_URL: ${PORTAL_URL:-https://net.wayda.co.tz}
-      CONSOLE_URL: ${CONSOLE_URL:-https://net.wayda.co.tz/console}
-      RADIUS_PUBLIC_HOST: ${RADIUS_PUBLIC_HOST:-161.97.182.204}
+      APP_URL: ${APP_URL:-https://hasnetworks.co.tz}
+      PORTAL_URL: ${PORTAL_URL:-https://hasnetworks.co.tz/portal}
+      CONSOLE_URL: ${CONSOLE_URL:-https://hasnetworks.co.tz}
+      RADIUS_PUBLIC_HOST: ${RADIUS_PUBLIC_HOST:-147.79.101.245}
     ports:
       - "127.0.0.1:8020:8000"
     volumes:
