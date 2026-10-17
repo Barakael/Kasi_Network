@@ -46,8 +46,8 @@ return [
          * printed code (body + check). No shared tenant prefix is embedded in the
          * code; operators are distinguished by tenant_id and the HMAC lookup.
          */
-        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 5),
-        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 4),
+        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 9),
+        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 5),
         // Bulk generation insert chunk. Large enough to keep a 10k batch fast,
         // small enough to stay well inside max_allowed_packet.
         'insert_chunk' => (int) env('KASI_VOUCHER_INSERT_CHUNK', 1000),
@@ -61,8 +61,10 @@ return [
         // Packs at or below this size issue in the HTTP request so Print is
         // available immediately. Larger packs still queue.
         'sync_issue_max' => (int) env('KASI_VOUCHER_SYNC_ISSUE_MAX', 250),
-        // Redemption attempts allowed per client MAC per minute.
-        'redeem_attempts_per_minute' => (int) env('KASI_VOUCHER_REDEEM_ATTEMPTS', 8),
+        // Failed redeem tries per client MAC before a temporary lock.
+        'redeem_attempts' => (int) env('KASI_VOUCHER_REDEEM_ATTEMPTS', 3),
+        // How long a MAC stays locked after exhausting redeem attempts.
+        'redeem_lock_seconds' => (int) env('KASI_VOUCHER_REDEEM_LOCK', 300),
         // Voucher cards per printed A4 sheet, as columns x rows.
         'print_columns' => (int) env('KASI_VOUCHER_PRINT_COLUMNS', 3),
         'print_rows' => (int) env('KASI_VOUCHER_PRINT_ROWS', 8),
@@ -82,7 +84,7 @@ return [
     'radius' => [
         /*
          * Address the MikroTik sends Access-Requests to. An IP, not the portal
-         * hostname: hotspot DNS is hijacked, so net.wayda.co.tz may not resolve
+         * hostname: hotspot DNS is hijacked, so hasnetworks.co.tz may not resolve
          * to the RADIUS host from the router.
          */
         'public_host' => env('RADIUS_PUBLIC_HOST')
@@ -132,31 +134,9 @@ return [
     ],
 
     /*
-    |---------------------------------------------------------------------------
-    | PalmPesa payments
-    |---------------------------------------------------------------------------
-    |
-    | USSD / STK initiate for the captive portal. Hosted checkout is not used:
-    | it would send phones off-hotspot to selcom.online. Live tokens live
-    | encrypted on the tenant; the values here are the single-operator fallback.
-    |
-    */
-
-    'palmpesa' => [
-        'base_url' => env('PALMPESA_BASE_URL', 'https://palmpesa.drmlelwa.co.tz'),
-        'api_token' => env('PALMPESA_API_TOKEN'),
-        'user_id' => env('PALMPESA_USER_ID'),
-        'vendor' => env('PALMPESA_VENDOR', 'TILL61103867'),
-        'address' => env('PALMPESA_ADDRESS', 'Dar es Salaam'),
-        'postcode' => env('PALMPESA_POSTCODE', '11111'),
-        'customer_email' => env('PALMPESA_CUSTOMER_EMAIL', 'hotspot@wayda.co.tz'),
-        'payment_timeout_minutes' => (int) env('PALMPESA_PAYMENT_TIMEOUT', 60),
-    ],
-
-    /*
-    | When live mobile money is not configured, the portal can still issue a
-    | voucher after the customer picks a package. Turn this off in production
-    | unless you intend to give away codes without payment.
+    | When Snippe is not configured, the portal can still issue a voucher after
+    | the customer picks a package. Turn this off in production unless you
+    | intend to give away codes without payment.
     */
     'demo_checkout' => filter_var(
         env('KASI_PORTAL_DEMO_CHECKOUT', env('APP_ENV') === 'local'),
