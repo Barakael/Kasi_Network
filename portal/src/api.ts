@@ -78,7 +78,9 @@ async function parse<T>(res: Response): Promise<T> {
   };
 
   if (!res.ok) {
-    throw new Error(body.message || body.errors?.code?.[0] || body.errors?.phone?.[0] || 'Something went wrong.');
+    throw new Error(
+      body.errors?.code?.[0] || body.errors?.phone?.[0] || body.message || 'Something went wrong.',
+    );
   }
 
   return body as T;
