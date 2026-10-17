@@ -51,6 +51,35 @@ final class CustomerDirectory
         return $customer;
     }
 
+    /**
+     * Returning device: find the latest customer on this operator who last used
+     * this MAC, so the portal can skip asking for the phone again.
+     */
+    public function findByMac(PortalContext $context): ?Customer
+    {
+        if ($context->clientMac === null || $context->clientMac === '') {
+            return null;
+        }
+
+        $customer = Customer::query()
+            ->where('tenant_id', $context->tenant->id)
+            ->where('last_mac', $context->clientMac)
+            ->orderByDesc('last_seen_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $customer instanceof Customer) {
+            return null;
+        }
+
+        $customer->forceFill([
+            'site_id' => $context->site->id,
+            'last_seen_at' => now(),
+        ])->save();
+
+        return $customer;
+    }
+
     public function isHai(Customer $customer): bool
     {
         if ($this->hasOpenSession($customer)) {
