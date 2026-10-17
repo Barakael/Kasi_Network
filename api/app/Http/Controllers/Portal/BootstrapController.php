@@ -67,6 +67,12 @@ class BootstrapController
         if ($phone !== '' && TanzanianPhone::isValid($phone)) {
             $customer = $this->customers->identify($context, $phone);
             $context = $context->withCustomer($customer->id);
+        } else {
+            $byMac = $this->customers->findByMac($context);
+
+            if ($byMac !== null) {
+                $context = $context->withCustomer($byMac->id);
+            }
         }
 
         return $this->payload->json($context, $nasDevice);
