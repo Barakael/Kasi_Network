@@ -61,7 +61,7 @@ export function OperatorLayout() {
 
   const mobile = platform
     ? items
-    : items.filter((item) => ['/', '/customers', '/batches', '/reports'].includes(item.to));
+    : items.filter((item) => ['/', '/customers', '/batches'].includes(item.to));
 
   const brandBlock = (
     <div className="console-aside-brand px-5 py-5">
@@ -113,14 +113,11 @@ export function OperatorLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col pb-[5.25rem] md:pb-0">
         <header className="console-mobile-header sticky top-0 z-20 border-b border-slate-200 md:hidden">
-          <div className="flex items-center justify-between gap-2 px-4 py-3">
-            <p className="min-w-0 truncate text-sm font-semibold text-ink-900">{platform ? 'Super Admin' : brand}</p>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <PrefBar compact />
-              <button type="button" className={secondaryBtn} onClick={() => setMenuOpen(true)}>
-                {sw('Menyu', 'Menu')}
-              </button>
-            </div>
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <p className="truncate text-sm font-semibold text-ink-900">{platform ? 'Super Admin' : brand}</p>
+            <button type="button" className={secondaryBtn} onClick={() => setMenuOpen(true)}>
+              {sw('Menyu', 'Menu')}
+            </button>
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8">
@@ -129,7 +126,7 @@ export function OperatorLayout() {
       </div>
 
       <nav
-        className={`console-tabbar fixed inset-x-0 bottom-0 z-30 grid gap-0.5 border-t px-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden ${platform ? 'grid-cols-4' : 'console-tabbar-5 grid-cols-5'}`}
+        className="console-tabbar fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-0.5 border-t px-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
         aria-label="Console"
       >
         {mobile.map((item) => (
