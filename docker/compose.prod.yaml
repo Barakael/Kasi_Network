@@ -59,6 +59,7 @@ services:
       - "1813:1813/udp"
     volumes:
       - ./freeradius/config:/opt/kasi-raddb:ro
+      - ./freeradius/certs:/opt/kasi-certs:ro
       - ./mysql/certs/ca.pem:/mysql-certs/ca.pem:ro
     command: ["radiusd", "-f", "-l", "stdout"]
     restart: unless-stopped
