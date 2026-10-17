@@ -38,7 +38,7 @@ set accept=yes port={$device->coa_port}
 
 /ip hotspot profile
 set [find] use-radius=yes radius-accounting=yes radius-interim-update=5m \\
-    radius-location-id="{$nasId}" login-by=cookie,http-chap,mac-cookie,https \\
+    radius-location-id="{$nasId}" login-by=cookie,http-chap,https,mac,mac-cookie \\
     http-cookie-lifetime=1d mac-cookie-timeout=4w2d \\
     radius-mac-format=XX:XX:XX:XX:XX:XX radius-mac-authentication=yes \\
     dns-name="" html-directory=hotspot
