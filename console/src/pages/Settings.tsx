@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
-import { api } from '../api';
+import { api, type VoucherCodeCharset } from '../api';
 import { PasswordForm } from '../components/PasswordForm';
 import { Card, ErrorBanner, Field, PageHeader, inputClass, primaryBtn, secondaryBtn } from '../components/ui';
 import { useAuth } from '../auth';
@@ -13,7 +13,11 @@ export function SettingsPage() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.settings });
   const campaigns = useQuery({ queryKey: ['campaigns'], queryFn: api.campaigns });
   const [error, setError] = useState<string | null>(null);
-  const [portal, setPortal] = useState({ portal_name: '', support_phone: '' });
+  const [portal, setPortal] = useState({
+    portal_name: '',
+    support_phone: '',
+    voucher_code_charset: 'alphanumeric' as VoucherCodeCharset,
+  });
   const [pay, setPay] = useState({ palmpesa_user_id: '', palmpesa_vendor: '', palmpesa_api_token: '' });
   const [notice, setNotice] = useState({ title: '', body: '', audience: 'all' });
   const [twoFactorSvg, setTwoFactorSvg] = useState<string | null>(null);
@@ -24,7 +28,11 @@ export function SettingsPage() {
     if (!loaded) {
       return;
     }
-    setPortal({ portal_name: loaded.portal_name ?? '', support_phone: loaded.support_phone ?? '' });
+    setPortal({
+      portal_name: loaded.portal_name ?? '',
+      support_phone: loaded.support_phone ?? '',
+      voucher_code_charset: loaded.voucher_code_charset ?? 'alphanumeric',
+    });
     setPay((current) => ({
       ...current,
       palmpesa_user_id: loaded.palmpesa_user_id ?? '',
@@ -80,6 +88,19 @@ export function SettingsPage() {
           <Field label={sw('Simu ya msaada', 'Support phone')}>
             <input className={inputClass} value={portal.support_phone} onChange={(e) => setPortal({ ...portal, support_phone: e.target.value })} placeholder="07XXXXXXXX" />
           </Field>
+          <Field label={sw('Muundo wa vocha', 'Voucher code format')}>
+            <select
+              className={inputClass}
+              value={portal.voucher_code_charset}
+              onChange={(e) =>
+                setPortal({ ...portal, voucher_code_charset: e.target.value as VoucherCodeCharset })
+              }
+            >
+              <option value="numeric">{sw('Namba 6', '6 digits')}</option>
+              <option value="alpha">{sw('Herufi tu', 'Letters only')}</option>
+              <option value="alphanumeric">{sw('Namba na herufi', 'Letters and numbers')}</option>
+            </select>
+          </Field>
           <Field label={sw('Nembo', 'Logo')}>
             <input className={inputClass} type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) void onLogo(file); }} />
           </Field>
@@ -87,6 +108,12 @@ export function SettingsPage() {
             <button type="submit" className={primaryBtn} disabled={save.isPending}>{sw('Hifadhi', 'Save')}</button>
           </div>
         </form>
+        <p className="mt-2 text-xs text-ink-600">
+          {sw(
+            'Muundo mpya hutumika kwa vocha mpya tu. Kadi zilizochapishwa bado zinatumika.',
+            'New format applies to newly issued vouchers only. Already printed cards still work.',
+          )}
+        </p>
       </Card>
       <Card>
         <h2 className="mb-1 text-sm font-semibold text-ink-700">{sw('Malipo ya wateja', 'Customer payments')}</h2>
