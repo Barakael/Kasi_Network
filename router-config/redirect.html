@@ -1,27 +1,142 @@
+$(if http-status == 302)
+Location: $(link-login-only)
+$(endif)
 <!DOCTYPE html>
 <html lang="sw">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kasi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f5f3d">
+  <meta http-equiv="refresh" content="3; url=$(link-login-only)">
+  <title>Inasubiri…</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      color: #eaf6ee;
+      background:
+        radial-gradient(120% 80% at 50% -10%, #6db87f 0%, transparent 55%),
+        radial-gradient(90% 70% at 100% 100%, #1c3326 0%, transparent 50%),
+        linear-gradient(165deg, #3a7a4c 0%, #2f5f3d 48%, #1c3326 100%);
+      overflow: hidden;
+    }
+    main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.35rem;
+      padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+      text-align: center;
+    }
+    .glow {
+      position: absolute;
+      width: 16rem;
+      height: 16rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgb(255 255 255 / 0.22) 0%, transparent 68%);
+      filter: blur(2px);
+      animation: breathe 2.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .mark {
+      position: relative;
+      z-index: 1;
+      width: 7.25rem;
+      height: 7.25rem;
+      display: grid;
+      place-items: center;
+      border-radius: 1.75rem;
+      background: rgb(255 255 255 / 0.14);
+      border: 1px solid rgb(255 255 255 / 0.28);
+      box-shadow:
+        0 18px 40px rgb(16 36 24 / 0.35),
+        inset 0 1px 0 rgb(255 255 255 / 0.25);
+      backdrop-filter: blur(8px);
+      animation: rise 0.7s ease-out both;
+    }
+    .mark svg {
+      width: 4.25rem;
+      height: 4.25rem;
+      display: block;
+    }
+    .brand {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      animation: rise 0.7s ease-out 0.08s both;
+    }
+    .status {
+      margin: 0;
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      opacity: 0.9;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    .dots::after {
+      content: "";
+      display: inline-block;
+      width: 1.1em;
+      text-align: left;
+      animation: dots 1.4s steps(3, end) infinite;
+    }
+    a { color: #eaf6ee; font-size: 0.85rem; opacity: 0.85; }
+    @keyframes breathe {
+      0%, 100% { transform: scale(0.92); opacity: 0.55; }
+      50% { transform: scale(1.08); opacity: 0.9; }
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    @keyframes dots {
+      0% { content: ""; }
+      33% { content: "."; }
+      66% { content: ".."; }
+      100% { content: "..."; }
+    }
+  </style>
 </head>
 <body>
+  <main>
+    <div class="glow" aria-hidden="true"></div>
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.12)"/>
+        <path d="M32 14c8.5 6.2 12.5 12.8 12.5 19.2 0 7.4-5.6 12.8-12.5 12.8S19.5 40.6 19.5 33.2C19.5 26.8 23.5 20.2 32 14Z" fill="#eaf6ee"/>
+        <path d="M32 22v24" stroke="#2f5f3d" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M22 36c6 2.5 14 2.5 20 0" stroke="#2f5f3d" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+      </svg>
+    </div>
+    <p class="brand">HasNetworks</p>
+    <p class="status">Inasubiri ipakie<span class="dots"></span></p>
+  </main>
   <script>
-    var err = "$(error)";
     var params = new URLSearchParams({
       site: "kasi-demo-site-1",
-      view: "packages",
       mac: "$(mac)",
       ip: "$(ip)",
       link_login: "$(link-login-only)",
       link_orig: "$(link-orig)",
       chap_id: "$(chap-id)",
-      chap_challenge: "$(chap-challenge)"
+      chap_challenge: "$(chap-challenge)",
+      error: "$(error)"
     });
-    if (err && err.indexOf("$(") === -1) {
-      params.set("error", err);
-    }
-    window.location.replace("https://net.wayda.co.tz/?" + params.toString());
+    window.location.replace("https://hasnetworks.co.tz/portal/?" + params.toString());
   </script>
+  <noscript>
+    <p style="text-align:center"><a href="$(link-login-only)">Endelea</a></p>
+  </noscript>
 </body>
 </html>
