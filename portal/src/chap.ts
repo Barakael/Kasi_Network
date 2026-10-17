@@ -45,7 +45,7 @@ export function submitHotspotLogin(
   const url = new URL('/go.html', login.origin);
   url.searchParams.set('username', username);
   url.searchParams.set('password', password);
-  url.searchParams.set('dst', `${window.location.origin}/connected.html`);
+  url.searchParams.set('dst', `${window.location.origin}${import.meta.env.BASE_URL}connected.html`);
   url.searchParams.set('popup', 'false');
   window.location.replace(url.toString());
 }
