@@ -14,8 +14,9 @@ use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 
 /**
- * The captive-portal first payload: branding, packages (only after a phone),
- * and any live offer ribbon.
+ * The captive-portal first payload: branding, sellable packages, and any live
+ * offer ribbon. Packages are listed before phone capture so the home screen can
+ * show bundles above the USSD number field.
  */
 final readonly class PortalPayload
 {
@@ -53,9 +54,7 @@ final readonly class PortalPayload
             ],
             'campaign' => $this->campaign($customer),
             'unused_voucher' => $this->unusedVoucher($customer),
-            'plans' => $identified
-                ? PlanResource::collection($this->plans())
-                : [],
+            'plans' => PlanResource::collection($this->plans()),
         ]);
     }
 
