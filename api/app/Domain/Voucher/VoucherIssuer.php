@@ -125,9 +125,11 @@ final readonly class VoucherIssuer
                 : $now->copy()->addDays($plan->shelf_life_days));
 
         $terms = $plan->termsSnapshot();
+        $plan->loadMissing('tenant');
+        $charset = $plan->tenant?->voucher_code_charset ?? VoucherCode::CHARSET_ALPHANUMERIC;
         // No shared prefix on the card: every code is a fresh random string.
         // Tenant ownership is tenant_id + global code_hash uniqueness.
-        $codes = $this->uniqueCodes($bodyLength, $size);
+        $codes = $this->uniqueCodes($charset, $bodyLength, $size);
         $rows = [];
 
         foreach ($codes as $code) {
@@ -230,12 +232,12 @@ final readonly class VoucherIssuer
      *
      * @return array<int, string>
      */
-    private function uniqueCodes(int $bodyLength, int $size): array
+    private function uniqueCodes(string $charset, int $bodyLength, int $size): array
     {
         $codes = [];
 
         while (count($codes) < $size) {
-            $code = VoucherCode::generate($bodyLength);
+            $code = VoucherCode::generateForCharset($charset, $bodyLength);
             // The value must stay a string. A code of only digits would become
             // an integer if it were used as the array key and then read back
             // with array_keys().
