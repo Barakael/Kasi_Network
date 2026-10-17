@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Domain\Tenancy\PortalContext;
 use App\Domain\Tenancy\PortalToken;
+use App\Models\Customer;
 use App\Models\NasDevice;
 use App\Models\Plan;
 use App\Models\Site;
@@ -57,6 +58,28 @@ class PortalBootstrapTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('needs_phone', false)
+            ->assertJsonCount(2, 'plans');
+    }
+
+    public function test_a_known_mac_recalls_the_customer_phone_without_reentry(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $site = Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        Plan::factory()->for($tenant)->count(2)->create();
+
+        Customer::factory()->for($tenant)->create([
+            'site_id' => $site->id,
+            'phone' => '255629288966',
+            'last_mac' => 'AA:BB:CC:DD:EE:FF',
+        ]);
+
+        $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'mac' => 'aa-bb-cc-dd-ee-ff',
+        ])
+            ->assertOk()
+            ->assertJsonPath('needs_phone', false)
+            ->assertJsonPath('client.phone', '0629288966')
             ->assertJsonCount(2, 'plans');
     }
 
