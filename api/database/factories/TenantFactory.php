@@ -35,6 +35,7 @@ class TenantFactory extends Factory
             'timezone' => 'Africa/Dar_es_Salaam',
             'portal_name' => $name.' WiFi',
             'support_phone' => '2557'.fake()->numerify('########'),
+            'voucher_code_charset' => VoucherCode::CHARSET_ALPHANUMERIC,
         ];
     }
 
