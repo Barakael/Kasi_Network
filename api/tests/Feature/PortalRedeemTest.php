@@ -135,7 +135,22 @@ class PortalRedeemTest extends TestCase
         $voucher = app(VoucherIssuer::class)->issueOne($plan);
 
         $this->assertDoesNotMatchRegularExpression('/\d/', $voucher->code);
+        $this->assertSame(6, strlen($voucher->code));
         $this->assertTrue(VoucherCode::hasValidCheckCharacter($voucher->code, VoucherCode::ALPHABET_ALPHA));
+    }
+
+    public function test_alphanumeric_charset_issues_six_character_codes(): void
+    {
+        $tenant = Tenant::factory()->create([
+            'voucher_code_charset' => VoucherCode::CHARSET_ALPHANUMERIC,
+        ]);
+        $this->actingForTenant($tenant);
+
+        $plan = Plan::factory()->for($tenant)->create();
+        $voucher = app(VoucherIssuer::class)->issueOne($plan);
+
+        $this->assertSame(6, strlen($voucher->code));
+        $this->assertTrue(VoucherCode::hasValidCheckCharacter($voucher->code, VoucherCode::ALPHABET));
     }
 
     public function test_owner_can_update_voucher_code_charset(): void
@@ -157,5 +172,25 @@ class PortalRedeemTest extends TestCase
     {
         $this->postJson('/api/portal/redeem', ['code' => 'KASXXXX'])
             ->assertStatus(419);
+    }
+
+    public function test_a_printed_code_redeems_without_phone_identify(): void
+    {
+        $tenant = Tenant::factory()->create(['code_prefix' => 'KAS']);
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        $this->actingForTenant($tenant);
+
+        $plan = Plan::factory()->for($tenant)->create(['device_limit' => 1]);
+        $voucher = app(VoucherIssuer::class)->issueOne($plan);
+
+        $token = $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'mac' => 'aa-bb-cc-dd-ee-10',
+        ])->assertOk()->assertJsonPath('needs_phone', true)->json('token');
+
+        $this->withHeader('X-Kasi-Portal-Token', $token)
+            ->postJson('/api/portal/redeem', ['code' => $voucher->code])
+            ->assertOk()
+            ->assertJsonPath('code', $voucher->code);
     }
 }
