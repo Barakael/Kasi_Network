@@ -20,18 +20,20 @@ class RedeemController
         PortalContext $context,
         CustomerDirectory $directory,
     ): JsonResponse {
-        abort_unless($context->isIdentified(), 422, 'Weka namba ya simu kwanza.');
-
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:32'],
         ]);
 
+        // Printed cards redeem by code (+ optional MAC bind). Phone identify is
+        // only required for USSD/checkout purchases, not Tumia vocha.
         $voucher = $redeemer->redeem($validated['code'], $context)->loadMissing('plan');
 
-        $customer = Customer::query()->find($context->customerId);
+        if ($context->isIdentified()) {
+            $customer = Customer::query()->find($context->customerId);
 
-        if ($customer instanceof Customer) {
-            $directory->attachVoucher($customer, $voucher);
+            if ($customer instanceof Customer) {
+                $directory->attachVoucher($customer, $voucher);
+            }
         }
 
         return response()->json([
