@@ -10,17 +10,23 @@ use InvalidArgumentException;
  * Generation, normalisation and validation of voucher codes.
  *
  * Codes are read off a printed card and typed on a phone keyboard, often by
- * someone who did not print them, so the alphabet is Crockford base32: it has no
- * O/0, I/1 or L/1 pairs to confuse, and it defines the substitutions to accept
- * when a user types the wrong one of a look-alike pair anyway.
+ * someone who did not print them. The default alphabet is Crockford base32: it
+ * has no O/0, I/1 or L/1 pairs to confuse, and it defines the substitutions to
+ * accept when a user types the wrong one of a look-alike pair anyway.
  *
- * A trailing check character makes a mistyped code fail in the browser instead of
- * costing a round trip. That matters more than it sounds: codes double as RADIUS
- * credentials, so every guess that reaches the API has to be rate limited, and
- * filtering out honest typos first keeps that budget for actual attacks.
+ * Operators may instead choose 6-digit numeric codes or letters-only codes in
+ * Settings. A trailing check character (alphanumeric / alpha modes) makes a
+ * mistyped code fail before a round trip. Numeric codes skip the check and rely
+ * on the redeem attempt lock instead.
  */
 final class VoucherCode
 {
+    public const string CHARSET_NUMERIC = 'numeric';
+
+    public const string CHARSET_ALPHA = 'alpha';
+
+    public const string CHARSET_ALPHANUMERIC = 'alphanumeric';
+
     /**
      * Crockford base32 minus Z, leaving 31 symbols. Excludes I, L, O and U.
      *
@@ -34,8 +40,49 @@ final class VoucherCode
      */
     public const string ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXY';
 
+    /** Letters only (Crockford letters, no digits). */
+    public const string ALPHABET_ALPHA = 'ABCDEFGHJKMNPQRSTVWXY';
+
+    public const string ALPHABET_NUMERIC = '0123456789';
+
+    /** Printed length for numeric codes (no check character). */
+    public const int NUMERIC_LENGTH = 6;
+
     /**
-     * Builds a strong random code: random body, then a check character.
+     * @return list<string>
+     */
+    public static function charsets(): array
+    {
+        return [
+            self::CHARSET_NUMERIC,
+            self::CHARSET_ALPHA,
+            self::CHARSET_ALPHANUMERIC,
+        ];
+    }
+
+    public static function isValidCharset(string $charset): bool
+    {
+        return in_array($charset, self::charsets(), true);
+    }
+
+    /**
+     * Builds a strong random code for the given owner charset setting.
+     */
+    public static function generateForCharset(string $charset, ?int $bodyLength = null): string
+    {
+        return match ($charset) {
+            self::CHARSET_NUMERIC => self::generateNumeric(),
+            self::CHARSET_ALPHA => self::generateWithAlphabet(
+                self::ALPHABET_ALPHA,
+                $bodyLength ?? 9,
+            ),
+            self::CHARSET_ALPHANUMERIC => self::generate($bodyLength ?? 9),
+            default => throw new InvalidArgumentException("Unknown voucher charset: {$charset}"),
+        };
+    }
+
+    /**
+     * Builds a strong random alphanumeric code: random body, then a check character.
      *
      * Codes are not prefixed with a shared tenant tag. Every card must look
      * different; tenant ownership is enforced by tenant_id + HMAC lookup, not by
@@ -47,27 +94,36 @@ final class VoucherCode
      */
     public static function generate(int $bodyLength = 9, string $prefix = ''): string
     {
-        if ($bodyLength < 1) {
-            throw new InvalidArgumentException('Body length must be at least 1.');
-        }
-
         if ($prefix !== '' && ! self::isValidPrefix($prefix)) {
             throw new InvalidArgumentException("Invalid voucher prefix: {$prefix}");
         }
 
-        $alphabet = self::ALPHABET;
-        $max = strlen($alphabet) - 1;
-        $body = '';
+        $body = self::generateWithAlphabet(self::ALPHABET, $bodyLength);
 
-        for ($i = 0; $i < $bodyLength; $i++) {
-            // random_int is cryptographically secure; mt_rand would make codes
-            // predictable from a handful of observed vouchers.
-            $body .= $alphabet[random_int(0, $max)];
+        if ($prefix === '') {
+            return $body;
         }
 
-        $withoutCheck = strtoupper($prefix).$body;
+        $withoutCheck = strtoupper($prefix).substr($body, 0, -1);
 
-        return $withoutCheck.self::checkCharacter($withoutCheck);
+        return $withoutCheck.self::checkCharacter($withoutCheck, self::ALPHABET);
+    }
+
+    public static function generateNumeric(int $length = self::NUMERIC_LENGTH): string
+    {
+        if ($length < 1) {
+            throw new InvalidArgumentException('Numeric code length must be at least 1.');
+        }
+
+        $alphabet = self::ALPHABET_NUMERIC;
+        $max = strlen($alphabet) - 1;
+        $code = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $code .= $alphabet[random_int(0, $max)];
+        }
+
+        return $code;
     }
 
     /**
@@ -93,6 +149,31 @@ final class VoucherCode
     }
 
     /**
+     * Whether a typed code is a plausible voucher for any supported charset.
+     *
+     * Used at redeem so a charset change does not block already-printed cards:
+     * numeric (6 digits), alpha-with-check, or alphanumeric-with-check all pass.
+     */
+    public static function isPlausible(string $code): bool
+    {
+        $normalised = self::normalise($code);
+
+        if ($normalised === '') {
+            return false;
+        }
+
+        if (preg_match('/^\d{'.self::NUMERIC_LENGTH.'}$/', $normalised) === 1) {
+            return true;
+        }
+
+        if (self::hasValidCheckCharacter($normalised, self::ALPHABET)) {
+            return true;
+        }
+
+        return self::hasValidCheckCharacter($normalised, self::ALPHABET_ALPHA);
+    }
+
+    /**
      * Position-weighted checksum over the code, rendered in the same alphabet.
      *
      * Each character's value is multiplied by its 1-based position and the total
@@ -109,10 +190,9 @@ final class VoucherCode
      * Weighting by position is essential; an unweighted sum would miss every
      * transposition, since addition does not care about order.
      */
-    public static function checkCharacter(string $codeWithoutCheck): string
+    public static function checkCharacter(string $codeWithoutCheck, string $alphabet = self::ALPHABET): string
     {
         $normalised = self::normalise($codeWithoutCheck);
-        $alphabet = self::ALPHABET;
         $base = strlen($alphabet);
         $sum = 0;
 
@@ -144,10 +224,9 @@ final class VoucherCode
     /**
      * Whether a code's check character agrees with its body.
      *
-     * A false result means the code was mistyped, not that it is unknown, so the
-     * portal can say so without consuming a redemption attempt.
+     * A false result means the code was mistyped, not that it is unknown.
      */
-    public static function hasValidCheckCharacter(string $code): bool
+    public static function hasValidCheckCharacter(string $code, string $alphabet = self::ALPHABET): bool
     {
         $normalised = self::normalise($code);
 
@@ -159,7 +238,7 @@ final class VoucherCode
         $check = substr($normalised, -1);
 
         try {
-            return self::checkCharacter($body) === $check;
+            return self::checkCharacter($body, $alphabet) === $check;
         } catch (InvalidArgumentException) {
             return false;
         }
@@ -202,5 +281,23 @@ final class VoucherCode
         }
 
         return preg_match('/^['.self::ALPHABET.']+$/', strtoupper($prefix)) === 1;
+    }
+
+    private static function generateWithAlphabet(string $alphabet, int $bodyLength): string
+    {
+        if ($bodyLength < 1) {
+            throw new InvalidArgumentException('Body length must be at least 1.');
+        }
+
+        $max = strlen($alphabet) - 1;
+        $body = '';
+
+        for ($i = 0; $i < $bodyLength; $i++) {
+            // random_int is cryptographically secure; mt_rand would make codes
+            // predictable from a handful of observed vouchers.
+            $body .= $alphabet[random_int(0, $max)];
+        }
+
+        return $body.self::checkCharacter($body, $alphabet);
     }
 }
