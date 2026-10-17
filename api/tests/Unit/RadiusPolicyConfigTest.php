@@ -28,9 +28,23 @@ class RadiusPolicyConfigTest extends TestCase
     {
         $policy = $this->raddb('policy.d/kasi');
 
+        $this->assertStringContainsString('normalize_calling_station_id', $policy);
         $this->assertStringContainsString("nd.nasname = '%{Packet-Src-IP-Address}'", $policy);
         $this->assertStringContainsString("nd.api_host = '%{NAS-IP-Address}'", $policy);
         $this->assertStringNotContainsString("AND nd.nasname = '%{NAS-IP-Address}' AND nd.deleted_at IS NULL LIMIT 1", $policy);
+    }
+
+    #[Test]
+    public function authorize_normalizes_calling_station_id_before_mac_rewrite(): void
+    {
+        $site = $this->raddb('sites-available/kasi');
+
+        $normalizeAt = strpos($site, 'normalize_calling_station_id');
+        $rewriteAt = strpos($site, 'rewrite_mac_username');
+
+        $this->assertNotFalse($normalizeAt);
+        $this->assertNotFalse($rewriteAt);
+        $this->assertLessThan($rewriteAt, $normalizeAt);
     }
 
     private function raddb(string $relative): string
