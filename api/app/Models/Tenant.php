@@ -31,6 +31,7 @@ use Illuminate\Support\Str;
  * @property string|null $palmpesa_api_token
  * @property string|null $palmpesa_user_id
  * @property string|null $palmpesa_vendor
+ * @property string $voucher_code_charset
  */
 #[Hidden(['snippe_api_key', 'snippe_webhook_secret', 'palmpesa_api_token'])]
 class Tenant extends Model
@@ -56,6 +57,7 @@ class Tenant extends Model
         'logo_path',
         'primary_color',
         'support_phone',
+        'voucher_code_charset',
     ];
 
     /**
