@@ -23,14 +23,14 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $tenant = Tenant::firstOrCreate(
-            ['slug' => 'kasi-WIFI'],
+            ['slug' => 'kasi-demo'],
             [
-                'name' => 'Kasi Network',
+                'name' => 'Kasi Demo Network',
                 'code_prefix' => 'KAS',
                 'status' => 'active',
                 'currency' => 'TZS',
                 'timezone' => 'Africa/Dar_es_Salaam',
-                'portal_name' => 'kasi wifi',
+                'portal_name' => 'Kasi Demo WiFi',
                 'primary_color' => '#2563eb',
                 'support_phone' => '255700000000',
             ],
@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
     {
         $accounts = [
             ['owner@kasi.test', 'Amina Owner', UserRole::Owner],
+            ['staff@kasi.test', 'Juma Staff', UserRole::Staff],
             ['agent@kasi.test', 'Neema Agent', UserRole::Agent],
         ];
 
