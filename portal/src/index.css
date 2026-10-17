@@ -236,6 +236,104 @@ body,
   }
 }
 
+.portal-connect {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+  color: #eaf6ee;
+  text-align: center;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #6db87f 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, #1c3326 0%, transparent 50%),
+    linear-gradient(165deg, #3a7a4c 0%, #2f5f3d 48%, #1c3326 100%);
+}
+
+.portal-connect-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.portal-connect-glow {
+  position: absolute;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.22) 0%, transparent 68%);
+  filter: blur(2px);
+  animation: portal-breathe 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.portal-connect-mark {
+  position: relative;
+  z-index: 1;
+  width: 7.25rem;
+  height: 7.25rem;
+  display: grid;
+  place-items: center;
+  border-radius: 1.75rem;
+  background: rgb(255 255 255 / 0.14);
+  border: 1px solid rgb(255 255 255 / 0.28);
+  box-shadow:
+    0 18px 40px rgb(16 36 24 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+
+.portal-connect-mark img,
+.portal-connect-mark svg {
+  width: 4.25rem;
+  height: 4.25rem;
+  object-fit: contain;
+}
+
+.portal-connect-spin {
+  position: absolute;
+  inset: -0.45rem;
+  border-radius: 2rem;
+  border: 2.5px solid rgb(255 255 255 / 0.18);
+  border-top-color: #eaf6ee;
+  animation: portal-spin 0.85s linear infinite;
+}
+
+.portal-connect-brand {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.portal-connect-status {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  opacity: 0.92;
+}
+
+@keyframes portal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes portal-breathe {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+  }
+}
+
 @media (min-width: 960px) and (min-height: 560px) {
   body,
   #root {
