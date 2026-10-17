@@ -30,6 +30,7 @@ class TenantResource extends JsonResource
             'portal_name' => $this->portal_name,
             'primary_color' => $this->primary_color,
             'support_phone' => $this->support_phone,
+            'voucher_code_charset' => $this->voucher_code_charset ?? 'alphanumeric',
             'logo_url' => $this->logoUrl(),
             'palmpesa_configured' => $this->palmpesaConfigured(),
             'palmpesa_user_id' => $this->palmpesa_user_id,
