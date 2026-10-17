@@ -27,26 +27,20 @@ final readonly class VoucherRedeemer
 
     public function redeem(string $rawCode, PortalContext $context): Voucher
     {
+        $this->assertNotLocked($context);
+
         $code = VoucherCode::normalise($rawCode);
 
-        if (! VoucherCode::hasValidCheckCharacter($code)) {
-            throw ValidationException::withMessages([
-                'code' => 'That code looks mistyped. Check the letters and try again.',
-            ]);
+        if (! VoucherCode::isPlausible($code)) {
+            $this->recordFailure($context);
         }
-
-        $this->throttle($context);
 
         $voucher = Voucher::query()
             ->where('code_hash', $this->hasher->hash($code))
             ->first();
 
         if ($voucher === null || ! $voucher->isRedeemable()) {
-            RateLimiter::hit($this->throttleKey($context));
-
-            throw ValidationException::withMessages([
-                'code' => 'This voucher cannot be used.',
-            ]);
+            $this->recordFailure($context);
         }
 
         RateLimiter::clear($this->throttleKey($context));
@@ -96,15 +90,43 @@ final readonly class VoucherRedeemer
         $this->provisioner->stampExpiration($voucher->fresh());
     }
 
-    private function throttle(PortalContext $context): void
+    private function assertNotLocked(PortalContext $context): void
     {
-        $max = (int) config('kasi.voucher.redeem_attempts_per_minute');
+        $max = (int) config('kasi.voucher.redeem_attempts');
 
         if (RateLimiter::tooManyAttempts($this->throttleKey($context), $max)) {
             throw ValidationException::withMessages([
-                'code' => 'Too many attempts. Wait a minute and try again.',
+                'code' => 'Umezuiwa kwa dakika 5. Jaribu tena baadaye.',
             ]);
         }
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function recordFailure(PortalContext $context): never
+    {
+        $key = $this->throttleKey($context);
+        $max = (int) config('kasi.voucher.redeem_attempts');
+        $lockSeconds = (int) config('kasi.voucher.redeem_lock_seconds');
+
+        RateLimiter::hit($key, $lockSeconds);
+
+        $remaining = max(0, $max - RateLimiter::attempts($key));
+
+        if ($remaining === 0) {
+            throw ValidationException::withMessages([
+                'code' => 'Umezuiwa kwa dakika 5. Jaribu tena baadaye.',
+            ]);
+        }
+
+        $message = $remaining === 1
+            ? 'Umekosea vocha. Umebakiza jaribio 1.'
+            : "Umekosea vocha. Umebakiza majaribio {$remaining}.";
+
+        throw ValidationException::withMessages([
+            'code' => $message,
+        ]);
     }
 
     private function throttleKey(PortalContext $context): string
