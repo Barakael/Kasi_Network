@@ -9,9 +9,7 @@ import {
   type Plan,
 } from './api';
 import { submitHotspotLogin } from './chap';
-import { QrScanner } from './QrScanner';
 
-type ScanTarget = 'main' | 'device';
 type View = 'home' | 'packages' | 'voucher' | 'device';
 
 function query(): URLSearchParams {
@@ -48,14 +46,13 @@ export function App() {
   const [deviceMac, setDeviceMac] = useState('');
   const [deviceCode, setDeviceCode] = useState('');
   const [autoRedeemed, setAutoRedeemed] = useState(false);
-  const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
   const [view, setView] = useState<View>(() => initialView(params));
 
   const missingSite = site
     ? null
     : pathCode()
-      ? 'Connect to the Wi-Fi hotspot first, then scan this voucher again from the login page.'
-      : 'Open this page from the Wi-Fi login screen, or scan a voucher QR.';
+      ? 'Connect to the Wi-Fi hotspot first, then open this voucher again from the login page.'
+      : 'Open this page from the Wi-Fi login screen.';
 
   useEffect(() => {
     if (!site) {
@@ -292,7 +289,7 @@ export function App() {
               <span>
                 <span className="portal-choice-kicker">Nina vocha</span>
                 <span className="portal-choice-title block">Tumia vocha</span>
-                <span className="portal-choice-copy block">Andika namba au scan QR ili upate Wi‑Fi.</span>
+                <span className="portal-choice-copy block">Andika namba ya vocha ili upate Wi‑Fi.</span>
               </span>
               <span className="portal-choice-go" aria-hidden>
                 →
@@ -391,9 +388,7 @@ export function App() {
           </button>
           <div>
             <h2 className="portal-panel-title">Tumia vocha</h2>
-            <p className="mt-1 text-sm text-leaf-700">
-              Andika namba iliyo kwenye kadi. Scan ni hiari — kama kamera imezuiwa, andika namba.
-            </p>
+            <p className="mt-1 text-sm text-leaf-700">Andika namba iliyo kwenye kadi.</p>
           </div>
           {boot.needs_phone && !boot.client.phone && (
             <label className="block text-sm font-medium text-leaf-800">
@@ -408,23 +403,18 @@ export function App() {
               />
             </label>
           )}
-          <div className="flex items-end gap-2.5">
-            <label className="block min-w-0 flex-1 text-sm font-medium text-leaf-800">
-              Namba ya vocha
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                autoComplete="off"
-                autoCapitalize="characters"
-                inputMode="text"
-                className="portal-field mt-1.5 font-mono tracking-[0.1em] placeholder:tracking-normal placeholder:text-leaf-300"
-                placeholder="XXXXX-XXXXX"
-              />
-            </label>
-            <button type="button" onClick={() => setScanTarget('main')} className="portal-btn-secondary shrink-0">
-              Scan
-            </button>
-          </div>
+          <label className="block text-sm font-medium text-leaf-800">
+            Namba ya vocha
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              autoComplete="off"
+              autoCapitalize="characters"
+              inputMode="text"
+              className="portal-field mt-1.5 font-mono tracking-[0.1em] placeholder:tracking-normal placeholder:text-leaf-300"
+              placeholder="XXXXX-XXXXX"
+            />
+          </label>
           <button
             type="submit"
             disabled={busy || code.length < 6}
@@ -476,20 +466,15 @@ export function App() {
             </label>
             <label className="block text-sm font-medium text-leaf-800">
               Voucher ya kifaa
-              <div className="mt-1.5 flex gap-2.5">
-                <input
-                  value={deviceCode}
-                  onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
-                  autoComplete="off"
-                  autoCapitalize="characters"
-                  inputMode="text"
-                  placeholder="XXXXX-XXXXX"
-                  className="portal-field min-w-0 flex-1 font-mono text-sm tracking-[0.08em] placeholder:tracking-normal"
-                />
-                <button type="button" onClick={() => setScanTarget('device')} className="portal-btn-secondary shrink-0">
-                  Scan
-                </button>
-              </div>
+              <input
+                value={deviceCode}
+                onChange={(e) => setDeviceCode(e.target.value.toUpperCase())}
+                autoComplete="off"
+                autoCapitalize="characters"
+                inputMode="text"
+                placeholder="XXXXX-XXXXX"
+                className="portal-field mt-1.5 font-mono text-sm tracking-[0.08em] placeholder:tracking-normal"
+              />
             </label>
             <button
               type="submit"
@@ -511,19 +496,6 @@ export function App() {
           status="Inaunganisha…"
         />
       )}
-      <QrScanner
-        open={scanTarget !== null}
-        onClose={() => setScanTarget(null)}
-        onCode={(scanned) => {
-          if (scanTarget === 'device') {
-            setDeviceCode(scanned);
-            setStatus('Voucher ya kifaa imejazwa kutoka QR.');
-            return;
-          }
-          setCode(scanned);
-          void redeemCode(scanned);
-        }}
-      />
     </>
   );
 }
