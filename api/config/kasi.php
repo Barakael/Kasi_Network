@@ -42,12 +42,13 @@ return [
         'hash_key' => env('KASI_VOUCHER_HASH_KEY') ?: env('APP_KEY', ''),
 
         /*
-         * Random body length before the check character. Default 9 → a 10-character
-         * printed code (body + check). No shared tenant prefix is embedded in the
-         * code; operators are distinguished by tenant_id and the HMAC lookup.
+         * Random body length before the check character. Default 5 → a 6-character
+         * printed code (body + check). Numeric charset skips the check and uses
+         * a fixed 6 digits. No shared tenant prefix is embedded in the code;
+         * operators are distinguished by tenant_id and the HMAC lookup.
          */
-        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 9),
-        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 5),
+        'body_length' => (int) env('KASI_VOUCHER_BODY_LENGTH', 5),
+        'group_size' => (int) env('KASI_VOUCHER_GROUP_SIZE', 4),
         // Bulk generation insert chunk. Large enough to keep a 10k batch fast,
         // small enough to stay well inside max_allowed_packet.
         'insert_chunk' => (int) env('KASI_VOUCHER_INSERT_CHUNK', 1000),
@@ -131,6 +132,28 @@ return [
         // waiting and release the voucher we had reserved for the order.
         'payment_timeout_minutes' => (int) env('SNIPPE_PAYMENT_TIMEOUT', 60),
         'currency' => env('SNIPPE_CURRENCY', 'TZS'),
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
+    | PalmPesa USSD push
+    |---------------------------------------------------------------------------
+    |
+    | Captive-portal Lipia uses initiate + callback, then confirms via
+    | order-status before issuing a voucher. Tenant tokens override the
+    | platform fallback below.
+    |
+    */
+
+    'palmpesa' => [
+        'base_url' => env('PALMPESA_BASE_URL', 'https://palmpesa.drmlelwa.co.tz'),
+        'api_token' => env('PALMPESA_API_TOKEN'),
+        'user_id' => env('PALMPESA_USER_ID'),
+        'vendor' => env('PALMPESA_VENDOR', 'TILL61103867'),
+        'address' => env('PALMPESA_ADDRESS', 'Dar es Salaam'),
+        'postcode' => env('PALMPESA_POSTCODE', '11111'),
+        'customer_email' => env('PALMPESA_CUSTOMER_EMAIL', 'hotspot@wayda.co.tz'),
+        'payment_timeout_minutes' => (int) env('PALMPESA_PAYMENT_TIMEOUT', 60),
     ],
 
     /*
