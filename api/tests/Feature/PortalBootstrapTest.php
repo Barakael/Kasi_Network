@@ -36,12 +36,12 @@ class PortalBootstrapTest extends TestCase
             ->assertJsonPath('site.name', $site->name)
             ->assertJsonPath('client.mac', 'AA:BB:CC:DD:EE:FF')
             ->assertJsonPath('needs_phone', true)
-            ->assertJsonCount(0, 'plans');
+            ->assertJsonCount(3, 'plans');
 
         $this->assertNotEmpty($response->json('token'));
     }
 
-    public function test_packages_appear_only_after_a_tanzanian_phone_is_saved(): void
+    public function test_packages_are_listed_before_phone_but_needs_phone_until_identified(): void
     {
         $tenant = Tenant::factory()->create();
         Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
@@ -50,7 +50,7 @@ class PortalBootstrapTest extends TestCase
         $this->postJson('/api/portal/bootstrap', ['site' => 'site-abc'])
             ->assertOk()
             ->assertJsonPath('needs_phone', true)
-            ->assertJsonCount(0, 'plans');
+            ->assertJsonCount(2, 'plans');
 
         $this->postJson('/api/portal/bootstrap', [
             'site' => 'site-abc',
