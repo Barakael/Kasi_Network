@@ -37,6 +37,7 @@ class NasDeviceTest extends TestCase
         $this->assertStringContainsString('address=147.79.101.245', $rsc);
         $this->assertStringNotContainsString('src-address=', $rsc);
         $this->assertStringContainsString('dst-host=hasnetworks.co.tz', $rsc);
+        $this->assertStringContainsString('login-by=cookie,http-chap,https,mac,mac-cookie', $rsc);
         $this->assertStringNotContainsString('comment="Kasi API"', $rsc);
         $this->assertStringContainsString('dns-server=192.168.10.212', $rsc);
 
