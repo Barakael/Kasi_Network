@@ -137,7 +137,14 @@ export const portalApi = {
       method: 'POST',
       headers: authHeaders(token),
       body: JSON.stringify({ code, mac, label }),
-    }).then((res) => parse<unknown>(res)),
+    }).then((res) =>
+      parse<{
+        data: { mac: string };
+        authorized: boolean;
+        authorize_detail?: string | null;
+        message?: string;
+      }>(res),
+    ),
 };
 
 export function formatPrice(minor: number, currency: string): string {
