@@ -11,7 +11,7 @@
   <form name="sendin" action="$(link-login-only)" method="post">
     <input type="hidden" name="username">
     <input type="hidden" name="password">
-    <input type="hidden" name="dst" value="https://net.wayda.co.tz/connected.html">
+    <input type="hidden" name="dst" value="https://hasnetworks.co.tz/portal/connected.html">
     <input type="hidden" name="popup" value="false">
   </form>
   <script>
@@ -20,7 +20,7 @@
       var user = q.get("username");
       var pass = q.get("password");
       if (!user || !pass) {
-        window.location.replace("https://net.wayda.co.tz/?site=kasi-demo-site-1&view=packages");
+        window.location.replace("https://hasnetworks.co.tz/portal/?site=kasi-demo-site-1&view=packages");
         return;
       }
       var f = document.sendin;

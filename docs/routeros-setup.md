@@ -40,7 +40,7 @@ Allow the portal host before authentication. Portal and API share one hostname:
 
 ```
 /ip hotspot walled-garden
-add dst-host=net.wayda.co.tz comment="Kasi portal"
+add dst-host=hasnetworks.co.tz comment="Kasi portal"
 ```
 
 ## Captive portal (Windows + phones)
