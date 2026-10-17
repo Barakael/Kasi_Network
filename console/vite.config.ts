@@ -4,7 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/console/',
+  // Nginx serves the console at the site root (hasnetworks.co.tz/), with
+  // /console/* redirected to /*. Asset URLs must therefore be root-relative.
+  base: '/',
   plugins: [
     react(),
     tailwindcss(),

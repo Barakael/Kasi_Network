@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  base: '/portal/',
   plugins: [react(), tailwindcss()],
   resolve: {
     // The portal is written against the React API but ships Preact's compat
