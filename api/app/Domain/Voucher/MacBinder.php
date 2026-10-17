@@ -66,6 +66,8 @@ final readonly class MacBinder
             $voucher->update(['bound_mac' => $mac]);
         }
 
+        $this->activateOnFirstUse($voucher->fresh());
+
         /*
          * A one-device bundle can lock at RADIUS with Calling-Station-Id. A
          * shared bundle must not: the second TV would then be refused even
@@ -73,10 +75,31 @@ final readonly class MacBinder
          * as MAC usernames and are rewritten onto this voucher instead.
          */
         if ($voucher->device_limit === 1) {
-            $this->provisioner->bindCallingStation($voucher, $mac);
+            $this->provisioner->bindCallingStation($voucher->fresh(), $mac);
         }
 
-        return $device;
+        return $device->fresh();
+    }
+
+    /**
+     * Starts the voucher clock when the first device is bound — same window as
+     * portal redeem — so RADIUS already has a usable credential before MAC-auth.
+     */
+    private function activateOnFirstUse(Voucher $voucher): void
+    {
+        if ($voucher->first_used_at !== null) {
+            return;
+        }
+
+        $now = now();
+
+        $voucher->update([
+            'first_used_at' => $now,
+            'expires_at' => $now->copy()->addSeconds($voucher->validity_seconds),
+            'status' => VoucherStatus::Active,
+        ]);
+
+        $this->provisioner->stampExpiration($voucher->fresh());
     }
 
     public function revoke(VoucherDevice $device): void
