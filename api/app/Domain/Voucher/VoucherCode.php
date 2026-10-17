@@ -14,10 +14,10 @@ use InvalidArgumentException;
  * has no O/0, I/1 or L/1 pairs to confuse, and it defines the substitutions to
  * accept when a user types the wrong one of a look-alike pair anyway.
  *
- * Operators may instead choose 6-digit numeric codes or letters-only codes in
- * Settings. A trailing check character (alphanumeric / alpha modes) makes a
- * mistyped code fail before a round trip. Numeric codes skip the check and rely
- * on the redeem attempt lock instead.
+ * Operators choose the alphabet once in Settings (numeric, letters, or both).
+ * Printed length is always six characters for every mode. Alphanumeric / alpha
+ * append a trailing check character (5 body + check). Numeric codes are six
+ * digits with no check and rely on the redeem attempt lock instead.
  */
 final class VoucherCode
 {
@@ -35,8 +35,8 @@ final class VoucherCode
      * modulo the alphabet size misses some single-character substitutions,
      * because a weight sharing a factor with 32 can cancel the error. 31 is
      * prime, so no weight below it can, and every single-character substitution
-     * changes the result. Dropping one symbol costs nothing: a ten-character
-     * body still yields about 8.2e14 combinations.
+     * changes the result. Dropping one symbol costs nothing: a five-character
+     * body plus check still yields about 28 million combinations per charset.
      */
     public const string ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXY';
 
@@ -45,8 +45,14 @@ final class VoucherCode
 
     public const string ALPHABET_NUMERIC = '0123456789';
 
-    /** Printed length for numeric codes (no check character). */
-    public const int NUMERIC_LENGTH = 6;
+    /** Printed length for every charset (numeric has no separate check digit). */
+    public const int PRINTED_LENGTH = 6;
+
+    /** @deprecated Use PRINTED_LENGTH */
+    public const int NUMERIC_LENGTH = self::PRINTED_LENGTH;
+
+    /** Random body length before the check character for alpha / alphanumeric. */
+    public const int BODY_LENGTH = 5;
 
     /**
      * @return list<string>
@@ -70,13 +76,12 @@ final class VoucherCode
      */
     public static function generateForCharset(string $charset, ?int $bodyLength = null): string
     {
+        $bodyLength ??= (int) (config('kasi.voucher.body_length') ?: self::BODY_LENGTH);
+
         return match ($charset) {
-            self::CHARSET_NUMERIC => self::generateNumeric(),
-            self::CHARSET_ALPHA => self::generateWithAlphabet(
-                self::ALPHABET_ALPHA,
-                $bodyLength ?? 9,
-            ),
-            self::CHARSET_ALPHANUMERIC => self::generate($bodyLength ?? 9),
+            self::CHARSET_NUMERIC => self::generateNumeric(self::PRINTED_LENGTH),
+            self::CHARSET_ALPHA => self::generateWithAlphabet(self::ALPHABET_ALPHA, $bodyLength),
+            self::CHARSET_ALPHANUMERIC => self::generate($bodyLength),
             default => throw new InvalidArgumentException("Unknown voucher charset: {$charset}"),
         };
     }
@@ -89,10 +94,10 @@ final class VoucherCode
      * a visible prefix that would make every voucher start the same way.
      *
      * @param  int  $bodyLength  Random characters before the check character.
-     *                           Default 9 → printed code length 10.
+     *                           Default 5 → printed code length 6.
      * @param  string  $prefix  Optional legacy prefix; leave empty for new issues.
      */
-    public static function generate(int $bodyLength = 9, string $prefix = ''): string
+    public static function generate(int $bodyLength = self::BODY_LENGTH, string $prefix = ''): string
     {
         if ($prefix !== '' && ! self::isValidPrefix($prefix)) {
             throw new InvalidArgumentException("Invalid voucher prefix: {$prefix}");
@@ -109,7 +114,7 @@ final class VoucherCode
         return $withoutCheck.self::checkCharacter($withoutCheck, self::ALPHABET);
     }
 
-    public static function generateNumeric(int $length = self::NUMERIC_LENGTH): string
+    public static function generateNumeric(int $length = self::PRINTED_LENGTH): string
     {
         if ($length < 1) {
             throw new InvalidArgumentException('Numeric code length must be at least 1.');
@@ -152,7 +157,7 @@ final class VoucherCode
      * Whether a typed code is a plausible voucher for any supported charset.
      *
      * Used at redeem so a charset change does not block already-printed cards:
-     * numeric (6 digits), alpha-with-check, or alphanumeric-with-check all pass.
+     * current 6-char codes and longer legacy alphanumeric/alpha cards all pass.
      */
     public static function isPlausible(string $code): bool
     {
@@ -162,7 +167,7 @@ final class VoucherCode
             return false;
         }
 
-        if (preg_match('/^\d{'.self::NUMERIC_LENGTH.'}$/', $normalised) === 1) {
+        if (preg_match('/^\d{'.self::PRINTED_LENGTH.'}$/', $normalised) === 1) {
             return true;
         }
 
