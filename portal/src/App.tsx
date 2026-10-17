@@ -10,7 +10,7 @@ import {
 } from './api';
 import { submitHotspotLogin } from './chap';
 
-type View = 'home' | 'packages' | 'voucher' | 'device';
+type View = 'home' | 'voucher' | 'device';
 
 function query(): URLSearchParams {
   return new URLSearchParams(window.location.search);
@@ -21,12 +21,30 @@ function pathCode(): string | null {
   return match?.[1] ?? null;
 }
 
+function phoneDigits(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+/** AA:BB:CC:DD:EE:FF while typing — hex only, uppercase, colons every two. */
+function formatMacInput(raw: string): string {
+  const hex = raw.replace(/[^0-9a-fA-F]/g, '').toUpperCase().slice(0, 12);
+  return hex.match(/.{1,2}/g)?.join(':') ?? '';
+}
+
+function macHexLength(formatted: string): number {
+  return formatted.replace(/[^0-9A-F]/gi, '').length;
+}
+
 function initialView(params: URLSearchParams): View {
   if (pathCode()) {
     return 'voucher';
   }
   const view = params.get('view');
-  if (view === 'packages' || view === 'voucher' || view === 'device') {
+  // Hotspot go.html still links view=packages — packages now live on home.
+  if (view === 'packages') {
+    return 'home';
+  }
+  if (view === 'voucher' || view === 'device') {
     return view;
   }
   return 'home';
@@ -46,6 +64,7 @@ export function App() {
   const [deviceMac, setDeviceMac] = useState('');
   const [deviceCode, setDeviceCode] = useState('');
   const [autoRedeemed, setAutoRedeemed] = useState(false);
+  const [boundOk, setBoundOk] = useState<{ authorized: boolean; message: string } | null>(null);
   const [view, setView] = useState<View>(() => initialView(params));
 
   const missingSite = site
@@ -102,26 +121,33 @@ export function App() {
     );
   }
 
-  async function redeemCode(raw: string) {
+  async function ensureIdentified(token: string): Promise<string> {
+    if (!boot) {
+      throw new Error('Inasubiri…');
+    }
+    if (!boot.needs_phone) {
+      return token;
+    }
+    if (phoneDigits(phone).length !== 10) {
+      throw new Error('Weka namba ya simu kwanza.');
+    }
+    const identified = await portalApi.identify(token, phone);
+    setBoot(identified);
+    if (identified.client.phone) {
+      setPhone(identified.client.phone);
+    }
+    return identified.token;
+  }
+
+  async function redeemCode(raw: string, tokenOverride?: string) {
     if (!boot) {
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      let token = boot.token;
-      if (boot.needs_phone) {
-        if (phone.length < 9) {
-          throw new Error('Weka namba ya simu kwanza.');
-        }
-        const identified = await portalApi.identify(token, phone);
-        setBoot(identified);
-        token = identified.token;
-        if (identified.client.phone) {
-          setPhone(identified.client.phone);
-        }
-      }
-      const result = await portalApi.redeem(token, raw);
+      // Printed vouchers redeem by code + MAC — no phone required.
+      const result = await portalApi.redeem(tokenOverride ?? boot.token, raw);
       setCode(result.display_code || result.code);
       loginWith(result.code);
     } catch (err) {
@@ -154,11 +180,12 @@ export function App() {
     setError(null);
     try {
       if (boot.capabilities.online_payments) {
-        setStatus('Check your phone for the payment prompt…');
-        const created = await portalApi.createOrder(boot.token, plan.id, phone);
+        const token = await ensureIdentified(boot.token);
+        setStatus('Angalia simu yako kwa ujumbe wa malipo…');
+        const created = await portalApi.createOrder(token, plan.id, phone);
         for (let i = 0; i < 45; i++) {
           await new Promise((r) => setTimeout(r, 2000));
-          const current = await portalApi.order(boot.token, created.data.uuid);
+          const current = await portalApi.order(token, created.data.uuid);
           if (current.data.code) {
             loginWith(current.data.code);
             return;
@@ -171,11 +198,12 @@ export function App() {
       }
 
       if (boot.capabilities.demo_checkout) {
+        const token = await ensureIdentified(boot.token);
         setStatus('Inatengeneza voucher…');
-        const issued = await portalApi.checkout(boot.token, plan.id);
+        const issued = await portalApi.checkout(token, plan.id);
         setCode(issued.display_code || issued.code);
         setStatus(`${issued.plan}: ${issued.display_code || issued.code}`);
-        await redeemCode(issued.code);
+        await redeemCode(issued.code, token);
         return;
       }
 
@@ -190,15 +218,19 @@ export function App() {
 
   async function bindDevice(event: FormEvent) {
     event.preventDefault();
-    if (!boot || deviceMac.length < 11 || deviceCode.length < 6) {
+    if (!boot || macHexLength(deviceMac) !== 12 || deviceCode.replace(/[\s-]/g, '').length < 6) {
       return;
     }
     setBusy(true);
     setError(null);
+    setBoundOk(null);
     try {
-      await portalApi.bind(boot.token, deviceCode, deviceMac);
-      setStatus(`Bound ${deviceMac}. That device will come online on its own.`);
+      const result = await portalApi.bind(boot.token, deviceCode, deviceMac);
       setDeviceCode('');
+      setBoundOk({
+        authorized: result.authorized,
+        message: result.message || 'Kifaa kimeunganishwa',
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -227,6 +259,14 @@ export function App() {
   }
 
   const nearby = hosts.slice(0, 2);
+  const digits = phoneDigits(phone);
+  const phoneReady = !!boot.client.phone || digits.length === 10;
+  const canPay =
+    !!plan &&
+    !busy &&
+    (boot.capabilities.online_payments
+      ? phoneReady
+      : boot.capabilities.demo_checkout);
 
   return (
     <>
@@ -250,13 +290,6 @@ export function App() {
         </>
       }
     >
-      <div className="portal-sheet-head">
-        <p className="text-xs font-semibold tracking-[0.18em] uppercase text-leaf-600">Karibu</p>
-        <p className="portal-brand mt-1 text-[1.65rem] leading-none text-leaf-900">
-          {boot.branding.operator || 'Kasi-Net'}
-        </p>
-      </div>
-
       {(error || status) && (
         <p
           className={`rounded-xl px-3 py-2 text-center text-sm ${
@@ -269,56 +302,16 @@ export function App() {
       )}
 
       {view === 'home' && (
-        <section className="portal-block">
-          <div>
-            <h2 className="portal-panel-title">Karibu</h2>
-            <p className="mt-1 text-sm text-leaf-700">Chagua njia moja. Bando, vocha, au kifaa kingine.</p>
+        <section className="portal-block portal-home">
+          <div className="portal-sheet-head">
+            <p className="text-xs font-semibold tracking-[0.18em] uppercase text-leaf-600">Karibu</p>
+            <p className="portal-brand mt-1 text-[1.45rem] leading-none text-leaf-900">
+              {boot.branding.operator || 'Kasi-Net'}
+            </p>
+            <p className="mt-1 text-sm text-leaf-700">Chagua bando, kisha weka namba ya simu.</p>
           </div>
-          <div className="portal-choices">
-            <button type="button" className="portal-choice" onClick={() => setView('packages')}>
-              <span>
-                <span className="portal-choice-kicker">Nunua</span>
-                <span className="portal-choice-title block">Bando</span>
-                <span className="portal-choice-copy block">Tazama bei na chagua muda wa intaneti.</span>
-              </span>
-              <span className="portal-choice-go" aria-hidden>
-                →
-              </span>
-            </button>
-            <button type="button" className="portal-choice" onClick={() => setView('voucher')}>
-              <span>
-                <span className="portal-choice-kicker">Nina vocha</span>
-                <span className="portal-choice-title block">Tumia vocha</span>
-                <span className="portal-choice-copy block">Andika namba ya vocha ili upate Wi‑Fi.</span>
-              </span>
-              <span className="portal-choice-go" aria-hidden>
-                →
-              </span>
-            </button>
-            <button type="button" className="portal-choice" onClick={() => setView('device')}>
-              <span>
-                <span className="portal-choice-kicker">TV / laptop</span>
-                <span className="portal-choice-title block">Ongeza kifaa</span>
-                <span className="portal-choice-copy block">Unganisha kifaa kingine kwa vocha yake.</span>
-              </span>
-              <span className="portal-choice-go" aria-hidden>
-                →
-              </span>
-            </button>
-          </div>
-        </section>
-      )}
 
-      {view === 'packages' && (
-        <section className="portal-block">
-          <button type="button" className="portal-back" onClick={() => setView('home')}>
-            ← Menu
-          </button>
-          <div>
-            <h2 className="portal-panel-title">Paketi</h2>
-            <p className="mt-1 text-sm text-leaf-700">Chagua fungu, kisha lipa ili upate voucher.</p>
-          </div>
-          <ul className="space-y-2">
+          <ul className="portal-plans">
             {boot.plans.map((item) => {
               const selected = plan?.id === item.id;
               return (
@@ -326,58 +319,81 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => setPlan(item)}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-left ${
-                      selected ? 'border-leaf-600 bg-leaf-100' : 'border-leaf-200 bg-white'
-                    }`}
+                    className={`portal-plan ${selected ? 'portal-plan-on' : ''}`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-semibold text-leaf-900">{item.name}</span>
-                      <span className="shrink-0 font-bold text-leaf-700">
-                        {formatPrice(item.price_minor, boot.branding.currency)}
+                    <span className="portal-plan-main">
+                      <span className="portal-plan-name">{item.name}</span>
+                      <span className="portal-plan-meta">
+                        {formatDuration(item.validity_seconds) ?? '—'}
+                        {' · '}
+                        {formatBytes(item.data_cap_bytes) ?? 'Unlimited'}
                       </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-leaf-700">{item.description || item.billing_period_label}</p>
-                    <p className="mt-1 text-xs text-leaf-600">
-                      {formatDuration(item.validity_seconds) ?? '—'}
-                      {' · '}
-                      {formatBytes(item.data_cap_bytes) ?? 'Unlimited'}
-                      {' · '}
-                      {item.device_limit === 1 ? '1 kifaa' : `${item.device_limit} vifaa`}
-                    </p>
+                    </span>
+                    <span className="portal-plan-price">
+                      {formatPrice(item.price_minor, boot.branding.currency)}
+                    </span>
                   </button>
                 </li>
               );
             })}
           </ul>
-          {plan && (boot.capabilities.online_payments || boot.capabilities.demo_checkout) && (
-            <form onSubmit={onBuy} className="space-y-2">
-              {boot.capabilities.online_payments && !boot.client.phone && (
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  inputMode="tel"
-                  className="portal-field"
-                  placeholder="07XXXXXXXX"
-                  aria-label="Namba ya simu"
-                />
+
+          {(boot.capabilities.online_payments || boot.capabilities.demo_checkout) && (
+            <form onSubmit={onBuy} className="portal-pay">
+              {boot.capabilities.online_payments && (
+                <div className="portal-phone-row">
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    className="portal-field portal-phone-input"
+                    placeholder="07XXXXXXXX"
+                    aria-label="Namba ya simu"
+                    readOnly={!!boot.client.phone}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canPay}
+                    className={`portal-send ${canPay ? 'portal-send-ready' : ''}`}
+                    aria-label={busy ? 'Inasubiri…' : 'Tuma malipo'}
+                  >
+                    {busy ? '…' : '→'}
+                  </button>
+                </div>
               )}
-              {boot.capabilities.online_payments && boot.client.phone && (
-                <p className="text-xs text-leaf-700">Simu: {boot.client.phone}</p>
+              {!boot.capabilities.online_payments && boot.capabilities.demo_checkout && (
+                <button
+                  type="submit"
+                  disabled={!canPay}
+                  className={`portal-send portal-send-full ${canPay ? 'portal-send-ready' : ''}`}
+                >
+                  {busy ? 'Inasubiri…' : `Pata ${plan?.name ?? 'bando'}`}
+                </button>
               )}
-              {!boot.capabilities.online_payments && (
-                <p className="text-xs text-leaf-700">
-                  Malipo ya simu hayajawezeshwa. Gusa ili upate voucher ya {plan.name}.
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={busy || (boot.capabilities.online_payments && phone.length < 9)}
-                className="portal-cta portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
-              >
-                {busy ? 'Inasubiri…' : `Lipa ${formatPrice(plan.price_minor, boot.branding.currency)} — ${plan.name}`}
-              </button>
             </form>
           )}
+
+          <div className="portal-secondary">
+            <button type="button" className="portal-secondary-link" onClick={() => setView('voucher')}>
+              <span>
+                <span className="portal-choice-kicker">Nina vocha</span>
+                <span className="portal-choice-title block">Tumia vocha</span>
+              </span>
+              <span className="portal-choice-go" aria-hidden>
+                →
+              </span>
+            </button>
+            <button type="button" className="portal-secondary-link" onClick={() => setView('device')}>
+              <span>
+                <span className="portal-choice-kicker">TV / laptop</span>
+                <span className="portal-choice-title block">Ongeza kifaa</span>
+              </span>
+              <span className="portal-choice-go" aria-hidden>
+                →
+              </span>
+            </button>
+          </div>
         </section>
       )}
 
@@ -390,19 +406,6 @@ export function App() {
             <h2 className="portal-panel-title">Tumia vocha</h2>
             <p className="mt-1 text-sm text-leaf-700">Andika namba iliyo kwenye kadi.</p>
           </div>
-          {boot.needs_phone && !boot.client.phone && (
-            <label className="block text-sm font-medium text-leaf-800">
-              Namba ya simu
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                inputMode="tel"
-                className="portal-field mt-1"
-                placeholder="07XXXXXXXX"
-                aria-label="Namba ya simu"
-              />
-            </label>
-          )}
           <label className="block text-sm font-medium text-leaf-800">
             Namba ya vocha
             <input
@@ -412,12 +415,12 @@ export function App() {
               autoCapitalize="characters"
               inputMode="text"
               className="portal-field mt-1.5 font-mono tracking-[0.1em] placeholder:tracking-normal placeholder:text-leaf-300"
-              placeholder="XXXXX-XXXXX"
+              placeholder="XXXXXX"
             />
           </label>
           <button
             type="submit"
-            disabled={busy || code.length < 6}
+            disabled={busy || code.replace(/[\s-]/g, '').length < 6}
             className="portal-cta portal-btn w-full bg-leaf-600 text-white enabled:hover:bg-leaf-700 disabled:opacity-45"
           >
             Tumia vocha
@@ -427,7 +430,14 @@ export function App() {
 
       {view === 'device' && (
         <section className="portal-block">
-          <button type="button" className="portal-back" onClick={() => setView('home')}>
+          <button
+            type="button"
+            className="portal-back"
+            onClick={() => {
+              setBoundOk(null);
+              setView('home');
+            }}
+          >
             ← Menu
           </button>
           <div>
@@ -441,14 +451,14 @@ export function App() {
                 <button
                   key={host.mac}
                   type="button"
-                  onClick={() => setDeviceMac(host.mac)}
+                  onClick={() => setDeviceMac(formatMacInput(host.mac))}
                   className={`min-h-10 flex-1 truncate rounded-xl border px-2.5 text-sm ${
-                    deviceMac === host.mac
+                    deviceMac === formatMacInput(host.mac)
                       ? 'border-leaf-600 bg-leaf-100 text-leaf-900'
                       : 'border-leaf-200 bg-white text-leaf-700'
                   }`}
                 >
-                  {host.vendor || host.mac}
+                  {host.vendor || formatMacInput(host.mac)}
                 </button>
               ))}
             </div>
@@ -459,9 +469,13 @@ export function App() {
               MAC address
               <input
                 value={deviceMac}
-                onChange={(e) => setDeviceMac(e.target.value)}
+                onChange={(e) => setDeviceMac(formatMacInput(e.target.value))}
                 placeholder="AA:BB:CC:DD:EE:FF"
-                className="portal-field mt-1.5 font-mono text-sm"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="text"
+                className="portal-field mt-1.5 font-mono text-sm uppercase tracking-[0.08em]"
               />
             </label>
             <label className="block text-sm font-medium text-leaf-800">
@@ -472,13 +486,17 @@ export function App() {
                 autoComplete="off"
                 autoCapitalize="characters"
                 inputMode="text"
-                placeholder="XXXXX-XXXXX"
+                placeholder="XXXXXX"
                 className="portal-field mt-1.5 font-mono text-sm tracking-[0.08em] placeholder:tracking-normal"
               />
             </label>
             <button
               type="submit"
-              disabled={busy || deviceMac.length < 11 || deviceCode.length < 6}
+              disabled={
+                busy ||
+                macHexLength(deviceMac) !== 12 ||
+                deviceCode.replace(/[\s-]/g, '').length < 6
+              }
               className="portal-btn w-full bg-leaf-600 text-white disabled:opacity-45"
             >
               {busy ? 'Inaunganisha…' : 'Unganisha kifaa'}
@@ -489,11 +507,28 @@ export function App() {
 
       <p className="portal-foot mt-auto text-center text-xs tracking-wide text-leaf-600/80">Powered by Kasi-Net</p>
     </Shell>
-      {busy && view === 'voucher' && (
+      {busy && (view === 'voucher' || view === 'device') && (
         <ConnectingSplash
           brand={boot.branding.operator}
           logoUrl={boot.branding.logo_url}
-          status="Inaunganisha…"
+          status={view === 'device' ? 'Inaunganisha kifaa…' : 'Inaunganisha…'}
+        />
+      )}
+      {boundOk && !busy && (
+        <ConnectingSplash
+          brand={boot.branding.operator}
+          logoUrl={boot.branding.logo_url}
+          status="Kifaa kimeunganishwa"
+          detail={
+            boundOk.authorized
+              ? 'Kifaa kinaweza kutumia intaneti sasa.'
+              : 'Washa Wi‑Fi upya kwenye kifaa hicho ili kiunganishe.'
+          }
+          done
+          onDismiss={() => {
+            setBoundOk(null);
+            setView('home');
+          }}
         />
       )}
     </>
@@ -501,12 +536,14 @@ export function App() {
 }
 
 function Shell({ children, hero }: { children: ReactNode; hero: ReactNode }) {
+  const asset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+
   return (
     <main className="portal-shell">
       <div className="portal-hero">
         <picture>
-          <source srcSet="/bg-hero.webp" type="image/webp" />
-          <img src="/Bg.png" alt="" decoding="async" />
+          <source srcSet={asset('bg-hero.webp')} type="image/webp" />
+          <img src={asset('Bg.png')} alt="" decoding="async" />
         </picture>
         <div className="portal-hero-shade" aria-hidden />
         <div className="portal-hero-copy">{hero}</div>
@@ -520,17 +557,23 @@ function ConnectingSplash({
   brand = 'HasNetworks',
   logoUrl = null,
   status = 'Inasubiri ipakie…',
+  detail = null,
+  done = false,
+  onDismiss,
 }: {
   brand?: string | null;
   logoUrl?: string | null;
   status?: string;
+  detail?: string | null;
+  done?: boolean;
+  onDismiss?: () => void;
 }) {
   return (
     <div className="portal-connect" role="status" aria-live="polite">
       <div className="portal-connect-inner">
         <div className="portal-connect-glow" aria-hidden />
         <div className="portal-connect-mark">
-          <span className="portal-connect-spin" aria-hidden />
+          {!done && <span className="portal-connect-spin" aria-hidden />}
           {logoUrl ? (
             <img src={logoUrl} alt="" />
           ) : (
@@ -553,6 +596,28 @@ function ConnectingSplash({
         </div>
         <p className="portal-connect-brand">{brand || 'HasNetworks'}</p>
         <p className="portal-connect-status">{status}</p>
+        {detail && (
+          <p className="portal-connect-status" style={{ opacity: 0.85, fontSize: '0.85rem' }}>
+            {detail}
+          </p>
+        )}
+        {done && onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="portal-btn"
+            style={{
+              marginTop: '0.5rem',
+              minWidth: '8rem',
+              background: '#fff',
+              color: '#2f5f3d',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            Sawa
+          </button>
+        )}
       </div>
     </div>
   );
