@@ -221,4 +221,28 @@ class VoucherCodeTest extends TestCase
         $this->assertTrue($hasher->matches('7F3K9M2QV5', $hash));
         $this->assertFalse($hasher->matches('7F3K9M2QV6', $hash));
     }
+
+    public function test_numeric_charset_yields_six_digits(): void
+    {
+        for ($i = 0; $i < 50; $i++) {
+            $code = VoucherCode::generateForCharset(VoucherCode::CHARSET_NUMERIC);
+
+            $this->assertSame(6, strlen($code));
+            $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
+            $this->assertTrue(VoucherCode::isPlausible($code));
+        }
+    }
+
+    public function test_alpha_charset_uses_letters_only(): void
+    {
+        for ($i = 0; $i < 50; $i++) {
+            $code = VoucherCode::generateForCharset(VoucherCode::CHARSET_ALPHA, 9);
+
+            $this->assertSame(10, strlen($code));
+            $this->assertMatchesRegularExpression('/^['.VoucherCode::ALPHABET_ALPHA.']+$/', $code);
+            $this->assertDoesNotMatchRegularExpression('/\d/', $code);
+            $this->assertTrue(VoucherCode::hasValidCheckCharacter($code, VoucherCode::ALPHABET_ALPHA));
+            $this->assertTrue(VoucherCode::isPlausible($code));
+        }
+    }
 }
