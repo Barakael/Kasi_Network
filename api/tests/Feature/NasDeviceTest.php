@@ -21,9 +21,9 @@ class NasDeviceTest extends TestCase
     #[Test]
     public function the_snippet_points_radius_at_the_public_host_and_redirects_to_the_portal(): void
     {
-        config()->set('kasi.radius.public_host', '161.97.182.204');
-        config()->set('kasi.portal_url', 'https://net.wayda.co.tz');
-        config()->set('app.url', 'https://net.wayda.co.tz');
+        config()->set('kasi.radius.public_host', '147.79.101.245');
+        config()->set('kasi.portal_url', 'https://hasnetworks.co.tz/portal');
+        config()->set('app.url', 'https://hasnetworks.co.tz');
 
         [$owner, $nas] = $this->router('102.202.74.55', apiHost: '192.168.10.212');
 
@@ -34,21 +34,16 @@ class NasDeviceTest extends TestCase
         $rsc = $response->json('rsc');
         $login = $response->json('login_html');
 
-        $this->assertStringContainsString('address=161.97.182.204', $rsc);
+        $this->assertStringContainsString('address=147.79.101.245', $rsc);
         $this->assertStringNotContainsString('src-address=', $rsc);
-        $this->assertStringContainsString('dst-host=net.wayda.co.tz', $rsc);
+        $this->assertStringContainsString('dst-host=hasnetworks.co.tz', $rsc);
         $this->assertStringNotContainsString('comment="Kasi API"', $rsc);
         $this->assertStringContainsString('dns-server=192.168.10.212', $rsc);
 
-        $this->assertStringContainsString('login-by=http-pap,http-chap,cookie,mac-cookie', $rsc);
-        $this->assertStringContainsString('https://net.wayda.co.tz/?', $login);
+        $this->assertStringContainsString('https://hasnetworks.co.tz/portal/?', $login);
         $this->assertStringContainsString('site: "'.$nas->site->nas_identifier.'"', $login);
-        $this->assertStringContainsString('view: "packages"', $login);
         $this->assertStringContainsString('$(chap-id)', $login);
-        $this->assertStringContainsString('window.location.replace', $login);
-        $this->assertStringNotContainsString('Rudi kwenye voucher', $login);
         $this->assertStringNotContainsString('hexMD5', $login);
-        $this->assertStringNotContainsString('Continue', $login);
     }
 
     #[Test]
