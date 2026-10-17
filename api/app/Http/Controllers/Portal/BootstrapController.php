@@ -21,8 +21,8 @@ use Illuminate\Http\JsonResponse;
  *
  * The only portal endpoint reachable without a token. It turns the router
  * identifier written into login.html into a resolved operator, and returns the
- * signed token every later call must present, alongside the branding. Packages
- * stay hidden until a Tanzanian phone is saved for this operator.
+ * signed token every later call must present, alongside branding and sellable
+ * packages (phone is still required before USSD checkout).
  */
 class BootstrapController
 {
