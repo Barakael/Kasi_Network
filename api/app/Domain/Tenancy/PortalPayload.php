@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Tenancy;
 
 use App\Domain\Customers\CustomerDirectory;
+use App\Domain\Voucher\VoucherStatus;
 use App\Http\Resources\PlanResource;
 use App\Models\Campaign;
 use App\Models\Customer;
 use App\Models\NasDevice;
 use App\Models\Plan;
 use App\Models\Tenant;
+use App\Models\Voucher;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -54,6 +56,12 @@ final readonly class PortalPayload
             ],
             'campaign' => $this->campaign($customer),
             'unused_voucher' => $this->unusedVoucher($customer),
+            /*
+             * Read-only MAC check for a live wall-clock window (plans.validity_seconds
+             * → vouchers.expires_at / radcheck Expiration). Separate from online-time
+             * (duration_seconds / Max-All-Session) and data caps. Does not start the clock.
+             */
+            'active_subscription' => $this->activeSubscription($context),
             'plans' => PlanResource::collection($this->plans()),
         ]);
     }
@@ -123,6 +131,58 @@ final readonly class PortalPayload
         return [
             'display_code' => $voucher->displayCode(),
             'plan' => $voucher->plan?->name,
+        ];
+    }
+
+    /**
+     * Newest in-window active voucher bound to this MAC (same rules as FreeRADIUS
+     * MAC rewrite). Used so the portal can resume without asking to pay again.
+     *
+     * @return array{code: string, display_code: string, plan: string|null, expires_at: string|null, remaining_seconds: int}|null
+     */
+    private function activeSubscription(PortalContext $context): ?array
+    {
+        $mac = $context->clientMac;
+
+        if ($mac === null || $mac === '') {
+            return null;
+        }
+
+        $voucher = Voucher::query()
+            ->with('plan')
+            ->where('tenant_id', $context->tenant->id)
+            ->where('status', VoucherStatus::Active)
+            ->where(function ($query): void {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->where(function ($query) use ($mac): void {
+                $query->where('bound_mac', $mac)
+                    ->orWhereHas('devices', function ($devices) use ($mac): void {
+                        $devices->where('mac', $mac)->where('status', 'active');
+                    });
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $voucher instanceof Voucher) {
+            return null;
+        }
+
+        $remaining = $voucher->expires_at === null
+            ? (int) $voucher->validity_seconds
+            : max(0, (int) now()->diffInSeconds($voucher->expires_at, false));
+
+        if ($remaining <= 0 && $voucher->expires_at !== null) {
+            return null;
+        }
+
+        return [
+            'code' => $voucher->code,
+            'display_code' => $voucher->displayCode(),
+            'plan' => $voucher->plan?->name,
+            'expires_at' => $voucher->expires_at?->toIso8601String(),
+            'remaining_seconds' => $remaining,
         ];
     }
 

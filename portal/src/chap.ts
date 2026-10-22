@@ -33,19 +33,48 @@ export function chapMd5(chapId: string, password: string, challenge: string): st
   return [...md5bytes(data)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * POST credentials to the hotspot login URL (link-login-only). Uses CHAP when
+ * the captive portal supplied chap-id / chap-challenge; otherwise PAP.
+ * Does not rely on router go.html, which is often not uploaded.
+ */
 export function submitHotspotLogin(
   linkLogin: string,
   username: string,
   password: string,
-  _chapId?: string | null,
-  _chapChallenge?: string | null,
-  _dst?: string | null,
+  chapId?: string | null,
+  chapChallenge?: string | null,
+  dst?: string | null,
 ): void {
-  const login = new URL(linkLogin);
-  const url = new URL('/go.html', login.origin);
-  url.searchParams.set('username', username);
-  url.searchParams.set('password', password);
-  url.searchParams.set('dst', `${window.location.origin}${import.meta.env.BASE_URL}connected.html`);
-  url.searchParams.set('popup', 'false');
-  window.location.replace(url.toString());
+  const action = linkLogin;
+  const connected = `${window.location.origin}${import.meta.env.BASE_URL}connected.html`;
+  const destination = dst && dst.length > 0 ? dst : connected;
+
+  let pass = password;
+  if (chapId && chapChallenge && !chapId.includes('$(') && !chapChallenge.includes('$(')) {
+    pass = chapMd5(chapId, password, chapChallenge);
+  }
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = action;
+  form.style.display = 'none';
+
+  const fields: Record<string, string> = {
+    username,
+    password: pass,
+    dst: destination,
+    popup: 'false',
+  };
+
+  for (const [name, value] of Object.entries(fields)) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
 }

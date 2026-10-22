@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domain\Billing\OrderFulfiller;
 use App\Domain\Billing\OrderStatus;
 use App\Models\Order;
 use App\Models\Plan;
@@ -12,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\Voucher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class PalmPesaCheckoutTest extends TestCase
@@ -206,6 +208,52 @@ class PalmPesaCheckoutTest extends TestCase
         $this->postJson('/webhooks/palmpesa/'.fake()->uuid(), [
             'order_id' => '1',
         ])->assertNotFound();
+    }
+
+    public function test_fulfill_clears_redeem_attempt_lock_for_the_client_mac(): void
+    {
+        Http::fake([
+            'https://palmpesa.drmlelwa.co.tz/api/order-status' => Http::response([
+                'data' => [['payment_status' => 'COMPLETED']],
+            ], 200),
+        ]);
+
+        $mac = 'AA:BB:CC:DD:EE:99';
+        RateLimiter::clear('redeem:'.$mac);
+
+        $tenant = Tenant::factory()->withPalmPesa()->create(['code_prefix' => 'WYD']);
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-palm-lock']);
+        $this->actingForTenant($tenant);
+        $plan = Plan::factory()->for($tenant)->hourly()->create(['price_minor' => 500]);
+        $order = Order::factory()->for($plan)->awaitingPalmPesa()->create([
+            'tenant_id' => $tenant->id,
+            'amount_minor' => 500,
+            'palmpesa_order_id' => 'LOCKCLEAR1',
+            'client_mac' => $mac,
+        ]);
+
+        $lockSeconds = (int) config('kasi.voucher.redeem_lock_seconds');
+        RateLimiter::hit('redeem:'.$mac, $lockSeconds);
+        RateLimiter::hit('redeem:'.$mac, $lockSeconds);
+        RateLimiter::hit('redeem:'.$mac, $lockSeconds);
+        $this->assertTrue(RateLimiter::tooManyAttempts(
+            'redeem:'.$mac,
+            (int) config('kasi.voucher.redeem_attempts'),
+        ));
+
+        app(OrderFulfiller::class)->fulfill($order);
+
+        $this->assertSame(0, RateLimiter::attempts('redeem:'.$mac));
+
+        $voucher = $order->fresh('voucher')->voucher;
+        $this->assertNotNull($voucher);
+
+        $token = $this->identifiedPortalToken('site-palm-lock', extra: ['mac' => $mac]);
+
+        $this->withHeader('X-Kasi-Portal-Token', $token)
+            ->postJson('/api/portal/redeem', ['code' => $voucher->code])
+            ->assertOk()
+            ->assertJsonPath('code', $voucher->code);
     }
 
     /**

@@ -12,12 +12,63 @@ import { submitHotspotLogin } from './chap';
 
 type View = 'home' | 'voucher' | 'device';
 
+const HOTSPOT_SESSION_KEY = 'kasi.hotspot';
+
+const HOTSPOT_PARAM_KEYS = [
+  'site',
+  'mac',
+  'ip',
+  'link_login',
+  'chap_id',
+  'chap_challenge',
+  'link_orig',
+] as const;
+
 function query(): URLSearchParams {
   return new URLSearchParams(window.location.search);
 }
 
+/** Merge URL query with sessionStorage so USSD app-switch does not drop link_login. */
+function hotspotParams(): URLSearchParams {
+  const fromUrl = query();
+  let stored: Record<string, string> = {};
+  try {
+    const raw = sessionStorage.getItem(HOTSPOT_SESSION_KEY);
+    if (raw) {
+      stored = JSON.parse(raw) as Record<string, string>;
+    }
+  } catch {
+    stored = {};
+  }
+
+  const merged = new URLSearchParams();
+  for (const key of HOTSPOT_PARAM_KEYS) {
+    const value = fromUrl.get(key) || stored[key] || '';
+    if (value) {
+      merged.set(key, value);
+    }
+  }
+
+  const toStore: Record<string, string> = {};
+  for (const key of HOTSPOT_PARAM_KEYS) {
+    const value = merged.get(key);
+    if (value) {
+      toStore[key] = value;
+    }
+  }
+  if (Object.keys(toStore).length > 0) {
+    try {
+      sessionStorage.setItem(HOTSPOT_SESSION_KEY, JSON.stringify(toStore));
+    } catch {
+      /* private mode / quota — ignore */
+    }
+  }
+
+  return merged;
+}
+
 function pathCode(): string | null {
-  const match = window.location.pathname.match(/^\/r\/([A-Z0-9-]+)/i);
+  const match = window.location.pathname.match(/(?:^|\/)r\/([A-Z0-9-]+)/i);
   return match?.[1] ?? null;
 }
 
@@ -51,7 +102,7 @@ function initialView(params: URLSearchParams): View {
 }
 
 export function App() {
-  const params = useMemo(() => query(), []);
+  const params = useMemo(() => hotspotParams(), []);
   const site = params.get('site');
   const [boot, setBoot] = useState<Bootstrap | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +115,7 @@ export function App() {
   const [deviceMac, setDeviceMac] = useState('');
   const [deviceCode, setDeviceCode] = useState('');
   const [autoRedeemed, setAutoRedeemed] = useState(false);
+  const [resumeAttempted, setResumeAttempted] = useState(false);
   const [boundOk, setBoundOk] = useState<{ authorized: boolean; message: string } | null>(null);
   const [view, setView] = useState<View>(() => initialView(params));
 
@@ -106,7 +158,8 @@ export function App() {
   }, [boot]);
 
   function loginWith(voucherCode: string) {
-    const link = params.get('link_login');
+    const hop = hotspotParams();
+    const link = hop.get('link_login');
     if (!link) {
       setStatus('Voucher accepted. Connect through the hotspot login page to go online.');
       return;
@@ -115,11 +168,32 @@ export function App() {
       link,
       voucherCode,
       voucherCode,
-      params.get('chap_id'),
-      params.get('chap_challenge'),
-      params.get('link_orig'),
+      hop.get('chap_id'),
+      hop.get('chap_challenge'),
+      hop.get('link_orig'),
     );
   }
+
+  // Returning MAC with a live wall-clock subscription: resume via go.html.
+  useEffect(() => {
+    if (!boot?.active_subscription || resumeAttempted || pathCode()) {
+      return;
+    }
+    setResumeAttempted(true);
+    const sub = boot.active_subscription;
+    const hop = hotspotParams();
+    if (!hop.get('link_login')) {
+      const mins = Math.max(1, Math.round(sub.remaining_seconds / 60));
+      setStatus(
+        sub.plan
+          ? `${sub.plan}: bado una dakika ~${mins}. Fungua kutoka skrini ya Wi‑Fi kuunganisha.`
+          : `Bado una dakika ~${mins}. Fungua kutoka skrini ya Wi‑Fi kuunganisha.`,
+      );
+      return;
+    }
+    setStatus('Inaunganisha…');
+    loginWith(sub.code);
+  }, [boot, resumeAttempted]);
 
   async function ensureIdentified(token: string): Promise<string> {
     if (!boot) {
@@ -139,11 +213,13 @@ export function App() {
     return identified.token;
   }
 
-  async function redeemCode(raw: string, tokenOverride?: string) {
+  async function redeemCode(raw: string, tokenOverride?: string, manageBusy = true) {
     if (!boot) {
       return;
     }
-    setBusy(true);
+    if (manageBusy) {
+      setBusy(true);
+    }
     setError(null);
     try {
       // Printed vouchers redeem by code + MAC — no phone required.
@@ -152,8 +228,11 @@ export function App() {
       loginWith(result.code);
     } catch (err) {
       setError((err as Error).message);
+      throw err;
     } finally {
-      setBusy(false);
+      if (manageBusy) {
+        setBusy(false);
+      }
     }
   }
 
@@ -163,12 +242,18 @@ export function App() {
       return;
     }
     setAutoRedeemed(true);
-    void redeemCode(fromQr);
+    void redeemCode(fromQr).catch(() => {
+      /* error already on screen */
+    });
   }, [boot, autoRedeemed, busy]);
 
   async function onRedeem(event: FormEvent) {
     event.preventDefault();
-    await redeemCode(code);
+    try {
+      await redeemCode(code);
+    } catch {
+      /* error already on screen */
+    }
   }
 
   async function onBuy(event: FormEvent) {
@@ -187,7 +272,8 @@ export function App() {
           await new Promise((r) => setTimeout(r, 2000));
           const current = await portalApi.order(token, created.data.uuid);
           if (current.data.code) {
-            loginWith(current.data.code);
+            setStatus('Inaunganisha…');
+            await redeemCode(current.data.code, token, false);
             return;
           }
           if (['failed', 'expired', 'voided'].includes(current.data.status)) {
@@ -203,7 +289,7 @@ export function App() {
         const issued = await portalApi.checkout(token, plan.id);
         setCode(issued.display_code || issued.code);
         setStatus(`${issued.plan}: ${issued.display_code || issued.code}`);
-        await redeemCode(issued.code, token);
+        await redeemCode(issued.code, token, false);
         return;
       }
 

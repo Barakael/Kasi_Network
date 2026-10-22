@@ -37,6 +37,14 @@ export type RedeemResult = {
   session?: RedeemSession;
 };
 
+export type ActiveSubscription = {
+  code: string;
+  display_code: string;
+  plan: string | null;
+  expires_at: string | null;
+  remaining_seconds: number;
+};
+
 export type Bootstrap = {
   token: string;
   needs_phone?: boolean;
@@ -46,6 +54,8 @@ export type Bootstrap = {
   capabilities: { online_payments: boolean; demo_checkout: boolean; device_discovery: boolean };
   campaign?: { title: string; body: string | null } | null;
   unused_voucher?: { display_code: string; plan: string | null } | null;
+  /** Live wall-clock window for this MAC — resume without paying again. */
+  active_subscription?: ActiveSubscription | null;
   plans: Plan[];
 };
 

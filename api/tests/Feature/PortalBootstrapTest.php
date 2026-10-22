@@ -6,11 +6,14 @@ namespace Tests\Feature;
 
 use App\Domain\Tenancy\PortalContext;
 use App\Domain\Tenancy\PortalToken;
+use App\Domain\Voucher\VoucherStatus;
 use App\Models\Customer;
 use App\Models\NasDevice;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Models\Tenant;
+use App\Models\Voucher;
+use App\Models\VoucherDevice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -274,5 +277,100 @@ class PortalBootstrapTest extends TestCase
             // The portal uses this to decide whether binding a TV is even
             // offerable, rather than failing later with no explanation.
             ->assertJsonPath('client.mac_known', false);
+    }
+
+    public function test_bootstrap_reports_an_active_in_window_subscription_for_the_client_mac(): void
+    {
+        $tenant = Tenant::factory()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        $this->actingForTenant($tenant);
+
+        $plan = Plan::factory()->for($tenant)->create([
+            'name' => 'Siku 1',
+            'validity_seconds' => 86400,
+            'is_sold_online' => true,
+        ]);
+        $voucher = Voucher::factory()->forPlan($plan)->active('AA:BB:CC:DD:EE:10')->create();
+
+        $response = $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'mac' => 'aa-bb-cc-dd-ee-10',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('active_subscription.code', $voucher->code)
+            ->assertJsonPath('active_subscription.display_code', $voucher->displayCode())
+            ->assertJsonPath('active_subscription.plan', 'Siku 1')
+            ->assertJsonPath('active_subscription.remaining_seconds', fn ($s) => is_int($s) && $s > 86000)
+            ->assertJsonCount(1, 'plans');
+    }
+
+    public function test_bootstrap_omits_active_subscription_when_the_voucher_has_expired(): void
+    {
+        $tenant = Tenant::factory()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        $this->actingForTenant($tenant);
+
+        $plan = Plan::factory()->for($tenant)->create(['is_sold_online' => true]);
+        Voucher::factory()->forPlan($plan)->create([
+            'status' => VoucherStatus::Active,
+            'bound_mac' => 'AA:BB:CC:DD:EE:11',
+            'first_used_at' => now()->subDay(),
+            'expires_at' => now()->subMinute(),
+        ]);
+
+        $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'mac' => 'AA:BB:CC:DD:EE:11',
+        ])
+            ->assertOk()
+            ->assertJsonPath('active_subscription', null)
+            ->assertJsonCount(1, 'plans');
+    }
+
+    public function test_bootstrap_finds_active_subscription_via_voucher_devices(): void
+    {
+        $tenant = Tenant::factory()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        $this->actingForTenant($tenant);
+
+        $plan = Plan::factory()->for($tenant)->create([
+            'device_limit' => 2,
+            'is_sold_online' => true,
+        ]);
+        $voucher = Voucher::factory()->forPlan($plan)->active(null)->create([
+            'bound_mac' => null,
+            'device_limit' => 2,
+        ]);
+        VoucherDevice::factory()->for($voucher)->create([
+            'tenant_id' => $tenant->id,
+            'mac' => 'AA:BB:CC:DD:EE:22',
+            'status' => 'active',
+        ]);
+
+        $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'mac' => 'AA:BB:CC:DD:EE:22',
+        ])
+            ->assertOk()
+            ->assertJsonPath('active_subscription.code', $voucher->code)
+            ->assertJsonPath('active_subscription.remaining_seconds', fn ($s) => is_int($s) && $s > 0);
+    }
+
+    public function test_bootstrap_omits_active_subscription_for_an_unrelated_mac(): void
+    {
+        $tenant = Tenant::factory()->create();
+        Site::factory()->for($tenant)->create(['nas_identifier' => 'site-abc']);
+        $this->actingForTenant($tenant);
+
+        $plan = Plan::factory()->for($tenant)->create(['is_sold_online' => true]);
+        Voucher::factory()->forPlan($plan)->active('AA:BB:CC:DD:EE:33')->create();
+
+        $this->postJson('/api/portal/bootstrap', [
+            'site' => 'site-abc',
+            'mac' => 'AA:BB:CC:DD:EE:99',
+        ])
+            ->assertOk()
+            ->assertJsonPath('active_subscription', null);
     }
 }

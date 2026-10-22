@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Turns a paid order into a live voucher.
@@ -46,6 +47,8 @@ final readonly class OrderFulfiller
                 $mac = MacAddress::parse($order->client_mac)->toString();
                 $voucher->update(['bound_mac' => $mac]);
                 $this->provisioner->bindCallingStation($voucher, $mac);
+                // Paid codes must not be blocked by earlier mistyped redeem attempts.
+                RateLimiter::clear('redeem:'.$mac);
             }
 
             $order->update([

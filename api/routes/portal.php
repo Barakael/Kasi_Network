@@ -24,7 +24,11 @@ Route::middleware(['portal', 'throttle:60,1'])->group(function (): void {
     Route::post('redeem', RedeemController::class)->name('redeem');
     Route::post('checkout', CheckoutController::class)->name('checkout');
     Route::post('orders', [OrderController::class, 'store'])->name('orders.store');
-    Route::get('orders/{order:uuid}', [OrderController::class, 'show'])->name('orders.show');
     Route::get('devices/nearby', [DeviceController::class, 'nearby'])->name('devices.nearby');
     Route::post('devices', [DeviceController::class, 'store'])->name('devices.store');
 });
+
+// USSD poll loops ~30/min; keep this outside the 60/min group so shared WAN IPs do not 429 mid-pay.
+Route::get('orders/{order:uuid}', [OrderController::class, 'show'])
+    ->middleware(['portal', 'throttle:120,1'])
+    ->name('orders.show');
